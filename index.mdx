@@ -1,97 +1,80 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "metabrainz.el — MusicBrainz & ListenBrainz for Emacs"
+description: "metabrainz.el provides Emacs Lisp packages for searching and browsing music metadata via MusicBrainz and tracking listening history via ListenBrainz."
 ---
 
-## Setting up
+metabrainz.el is a collection of Emacs Lisp packages that connect Emacs to the [MusicBrainz](https://musicbrainz.org) open music encyclopedia and the [ListenBrainz](https://listenbrainz.org) listen-tracking service. Use it interactively in `org-mode` to explore music metadata, or integrate it programmatically into music players and workflows to submit listening data.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install musicbrainz.el and listenbrainz.el from source or via package managers
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Set your API token and customize request behavior
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="MusicBrainz" icon="magnifying-glass" href="/musicbrainz/overview">
+    Search, look up, and browse music metadata using MBIDs
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="ListenBrainz" icon="music" href="/listenbrainz/overview">
+    Submit listens and retrieve listening history and statistics
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Get started in minutes
 
-Everything you need to create world-class documentation.
+<Steps>
+  <Step title="Install the packages">
+    Clone the repository and add it to your Emacs `load-path`, or install via straight.el or use-package.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+    ```emacs-lisp
+    (add-to-list 'load-path "/path/to/metabrainz")
+    (require 'musicbrainz)
+    (require 'listenbrainz)
+    ```
+  </Step>
+  <Step title="Configure your ListenBrainz token">
+    For ListenBrainz features that require authentication, set your API token. Find your token at [listenbrainz.org/profile](https://listenbrainz.org/profile/).
 
-## Need inspiration?
+    ```emacs-lisp
+    (setq listenbrainz-api-token "your-token-here")
+    ```
+  </Step>
+  <Step title="Search for music metadata">
+    Search MusicBrainz for an artist and get their MBID:
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+    ```emacs-lisp
+    (musicbrainz-artist-to-mbid "Autechre")
+    ;; => "410c9baf-5469-44f6-9852-826524b80c61"
+    ```
+  </Step>
+  <Step title="Track what you're listening to">
+    Submit a listen to ListenBrainz from Emacs:
+
+    ```emacs-lisp
+    (listenbrainz-submit-playing-now "Autechre" "Gantz Graf")
+    ```
+  </Step>
+</Steps>
+
+## What's included
+
+<CardGroup cols={2}>
+  <Card title="MusicBrainz search" icon="database" href="/musicbrainz/searching">
+    Full Lucene query syntax support for searching artists, recordings, releases, labels, events, and more
+  </Card>
+  <Card title="MBID lookups" icon="fingerprint" href="/musicbrainz/lookup">
+    Retrieve detailed entity data and subqueries using MusicBrainz Identifiers
+  </Card>
+  <Card title="Cover art" icon="image" href="/musicbrainz/cover-art">
+    Fetch front and back cover art from the Cover Art Archive by release MBID
+  </Card>
+  <Card title="Listen submission" icon="circle-play" href="/listenbrainz/submitting-listens">
+    Submit single listens, playing-now events, and listen imports to ListenBrainz
+  </Card>
+  <Card title="Listening statistics" icon="chart-bar" href="/listenbrainz/statistics">
+    Retrieve top artists, releases, and recordings for any time range
+  </Card>
+  <Card title="Full API reference" icon="book" href="/reference/musicbrainz-api">
+    Complete reference for all public functions in both packages
+  </Card>
+</CardGroup>

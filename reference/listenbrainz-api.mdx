@@ -1,0 +1,357 @@
+---
+title: "listenbrainz.el API Reference — Submit, Read, Stats"
+description: "Complete reference for every public function in listenbrainz.el: submit listens, read history, query statistics, and inspect social connections."
+---
+
+The `listenbrainz.el` package provides functions for submitting listen events to ListenBrainz, reading a user's listening history, and fetching statistics and social data. Submitting listens and accessing private endpoints requires an API token set via `listenbrainz-api-token`. Read-only endpoints such as `listenbrainz-listens` and `listenbrainz-stats-artists` are available without authentication.
+
+---
+
+## Core API
+
+### `listenbrainz-validate-token`
+
+Validate an API token and return the associated username, or `nil` if the token is invalid.
+
+```emacs-lisp
+(listenbrainz-validate-token token)
+```
+
+<ParamField path="token" type="string" required>
+  A ListenBrainz API token. Tokens can be found at [listenbrainz.org/profile/](https://listenbrainz.org/profile/).
+</ParamField>
+
+```emacs-lisp
+(listenbrainz-validate-token listenbrainz-api-token)
+;; Returns "zzzkt" on success, nil on failure
+```
+
+<Note>
+  This function does not use `listenbrainz-api-token` automatically — pass the token explicitly. This makes it useful for testing a new token before assigning it.
+</Note>
+
+---
+
+### `listenbrainz-submit-listen`
+
+The low-level submit function. Constructs and POSTs a listen payload to the `/1/submit-listens` endpoint.
+
+```emacs-lisp
+(listenbrainz-submit-listen type artist track &optional release)
+```
+
+<ParamField path="type" type="string" required>
+  Listen type. Must be one of `"single"`, `"import"`, or `"playing_now"`. Use `"single"` for a completed listen; `"playing_now"` for the currently playing track.
+</ParamField>
+
+<ParamField path="artist" type="string" required>
+  Artist name string.
+</ParamField>
+
+<ParamField path="track" type="string" required>
+  Track title string.
+</ParamField>
+
+<ParamField path="release" type="string">
+  Release (album) title. Optional; included in the payload when provided.
+</ParamField>
+
+<Warning>
+  This function requires `listenbrainz-api-token` to be set. Requests without a valid token will be rejected by the server.
+</Warning>
+
+---
+
+### `listenbrainz-submit-single-listen`
+
+Submit a completed listen for one track. Wraps `listenbrainz-submit-listen` with `type = "single"` and automatically timestamps the listen.
+
+```emacs-lisp
+(listenbrainz-submit-single-listen artist track &optional release)
+```
+
+<ParamField path="artist" type="string" required>
+  Artist name.
+</ParamField>
+
+<ParamField path="track" type="string" required>
+  Track title.
+</ParamField>
+
+<ParamField path="release" type="string">
+  Album or release title.
+</ParamField>
+
+```emacs-lisp
+(listenbrainz-submit-single-listen "Matthew Thomas" "Taema" "Architecture")
+(listenbrainz-submit-single-listen "farmersmanual" "808808008088 (11)")
+```
+
+---
+
+### `listenbrainz-submit-playing-now`
+
+Submit a "playing now" notification for the currently playing track. No timestamp is included in the payload; the server records the current server time.
+
+```emacs-lisp
+(listenbrainz-submit-playing-now artist track &optional release)
+```
+
+<ParamField path="artist" type="string" required>
+  Artist name.
+</ParamField>
+
+<ParamField path="track" type="string" required>
+  Track title.
+</ParamField>
+
+<ParamField path="release" type="string">
+  Album or release title.
+</ParamField>
+
+```emacs-lisp
+(listenbrainz-submit-playing-now "farmersmanual" "808808008088 (11)")
+```
+
+<Tip>
+  Call `listenbrainz-submit-playing-now` at the start of a track and `listenbrainz-submit-single-listen` when it finishes, to replicate the listen submission pattern used by most scrobblers.
+</Tip>
+
+---
+
+### `listenbrainz-listens`
+
+Fetch and print the listen history for a user as an org-mode table.
+
+```emacs-lisp
+(listenbrainz-listens username &optional count)
+```
+
+<ParamField path="username" type="string" required>
+  ListenBrainz username.
+</ParamField>
+
+<ParamField path="count" type="number" default="25">
+  Number of listens to return. Maximum is `listenbrainz--MAX_ITEMS_PER_GET` (100).
+</ParamField>
+
+```emacs-lisp
+(listenbrainz-listens "zzzkt")
+(listenbrainz-listens "zzzkt" 33)
+```
+
+Output format (each row): `artist | track |`
+
+---
+
+### `listenbrainz-playing-now`
+
+Fetch and print the track currently playing for a user.
+
+```emacs-lisp
+(listenbrainz-playing-now username)
+```
+
+<ParamField path="username" type="string" required>
+  ListenBrainz username.
+</ParamField>
+
+```emacs-lisp
+(listenbrainz-playing-now "zzzkt")
+```
+
+Output format: `artist | track |`
+
+---
+
+## Statistics API
+
+Statistics functions accept an optional `range` parameter to scope results to a time window. All three functions share the same signature shape.
+
+### `listenbrainz-stats-artists`
+
+Fetch the top artists by listen count for a user.
+
+```emacs-lisp
+(listenbrainz-stats-artists username &optional count range)
+```
+
+<ParamField path="username" type="string" required>
+  ListenBrainz username.
+</ParamField>
+
+<ParamField path="count" type="number" default="25">
+  Number of artists to return.
+</ParamField>
+
+<ParamField path="range" type="string" default="all_time">
+  Time range for statistics. Valid values: `"week"`, `"month"`, `"year"`, `"all_time"`.
+</ParamField>
+
+```emacs-lisp
+(listenbrainz-stats-artists "zzzkt")
+(listenbrainz-stats-artists "zzzkt" 10 "month")
+```
+
+Output format: `artist_name | listen_count |`
+
+---
+
+### `listenbrainz-stats-releases`
+
+Fetch the top releases by listen count for a user.
+
+```emacs-lisp
+(listenbrainz-stats-releases username &optional count range)
+```
+
+<ParamField path="username" type="string" required>
+  ListenBrainz username.
+</ParamField>
+
+<ParamField path="count" type="number" default="25">
+  Number of releases to return.
+</ParamField>
+
+<ParamField path="range" type="string" default="all_time">
+  Time range. Valid values: `"week"`, `"month"`, `"year"`, `"all_time"`.
+</ParamField>
+
+```emacs-lisp
+(listenbrainz-stats-releases "zzzkt")
+(listenbrainz-stats-releases "zzzkt" 5 "year")
+```
+
+Output format: `artist_name | release_name | listen_count |`
+
+---
+
+### `listenbrainz-stats-recordings`
+
+Fetch the top recordings (tracks) by listen count for a user.
+
+```emacs-lisp
+(listenbrainz-stats-recordings username &optional count range)
+```
+
+<ParamField path="username" type="string" required>
+  ListenBrainz username.
+</ParamField>
+
+<ParamField path="count" type="number" default="25">
+  Number of recordings to return.
+</ParamField>
+
+<ParamField path="range" type="string" default="all_time">
+  Time range. Valid values: `"week"`, `"month"`, `"year"`, `"all_time"`.
+</ParamField>
+
+```emacs-lisp
+(listenbrainz-stats-recordings "zzzkt" 13 "month")
+```
+
+Output format: `artist_name | track_name | listen_count |`
+
+---
+
+## Social API
+
+### `listenbrainz-followers`
+
+Fetch the list of users who follow a given user, optionally formatted as a graph edge list.
+
+```emacs-lisp
+(listenbrainz-followers username &optional output)
+```
+
+<ParamField path="username" type="string" required>
+  ListenBrainz username whose followers to fetch.
+</ParamField>
+
+<ParamField path="output" type="string">
+  Output format. Pass `"graph"` to produce `follower -> username |` edge rows; omit (or pass any other value) for a simple `username |` list.
+</ParamField>
+
+```emacs-lisp
+;; Simple list
+(listenbrainz-followers "zzzkt")
+
+;; Graph edge format
+(listenbrainz-followers "zzzkt" "graph")
+```
+
+---
+
+### `listenbrainz-following`
+
+Fetch the list of users that a given user follows.
+
+```emacs-lisp
+(listenbrainz-following username)
+```
+
+<ParamField path="username" type="string" required>
+  ListenBrainz username.
+</ParamField>
+
+```emacs-lisp
+(listenbrainz-following "zzzkt")
+```
+
+Output format: `username |` (one row per followed user)
+
+---
+
+## Utilities
+
+### `listenbrainz-timestamp`
+
+Generate a ListenBrainz-compatible UNIX epoch timestamp in UTC.
+
+```emacs-lisp
+(listenbrainz-timestamp &optional time)
+```
+
+<ParamField path="time" type="time value">
+  An Emacs time value to convert. When omitted, `(current-time)` is used.
+</ParamField>
+
+```emacs-lisp
+;; Current time as integer UNIX timestamp
+(listenbrainz-timestamp)
+
+;; Convert a specific time value
+(listenbrainz-timestamp (encode-time 0 0 12 1 1 2024))
+```
+
+This function is called internally by `listenbrainz-submit-listen` when submitting a `"single"` listen. All ListenBrainz timestamps are UNIX epoch integers in UTC.
+
+---
+
+## Constants
+
+The following constants mirror the server-side limits defined in `listenbrainz.webserver.views.api_tools`. They are prefixed `listenbrainz--` (double dash) to indicate they are internal, but are documented here for reference when constructing batch submissions or validating tag data.
+
+| Constant | Value | Description |
+|---|---|---|
+| `listenbrainz--MAX_LISTEN_SIZE` | `10240` | Maximum size of a single listen payload in bytes. |
+| `listenbrainz--MAX_ITEMS_PER_GET` | `100` | Maximum number of listens returned by a single GET request. |
+| `listenbrainz--DEFAULT_ITEMS_PER_GET` | `25` | Default number of listens per GET request. |
+| `listenbrainz--MAX_TAGS_PER_LISTEN` | `50` | Maximum number of tags allowed per listen. |
+| `listenbrainz--MAX_TAG_SIZE` | `64` | Maximum character length of a single tag. |
+
+---
+
+## API coverage
+
+This package implements a subset of the full ListenBrainz API. The following endpoints are **not yet implemented**:
+
+- `DELETE /1/delete-listen`
+- `GET /1/user/(user_name)/listen-count`
+- `GET /1/user/(user_name)/similar-users`
+- `GET /1/user/(user_name)/similar-to/(other_user_name)`
+- All Feedback, Recommendation, Timeline, and Pinned Recording endpoints
+- `GET /1/stats/sitewide/artists`
+- Playlist endpoints
+
+See the [ListenBrainz API documentation](https://listenbrainz.readthedocs.io/en/production/dev/api/) for the complete endpoint reference.

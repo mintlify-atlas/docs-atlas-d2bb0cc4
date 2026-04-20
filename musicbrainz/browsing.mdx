@@ -1,0 +1,191 @@
+---
+title: 'Browsing MusicBrainz — List All Linked Entities by MBID'
+description: 'Use musicbrainz-browse to list all entities directly linked to a known MBID — albums by an artist, releases on a label, recordings in a release.'
+keywords: ['musicbrainz browse', 'linked entities', 'release group', 'artist releases', 'MBID', 'emacs']
+---
+
+Browse requests return every entity of one type that is directly linked to a specific known entity. The key difference from search is that browsing is a direct database traversal, not a text match — you do not get ranked scores, you get an exhaustive list of what is attached. Because of that, you need an MBID before you can browse.
+
+<Note>
+  Browse is not a search. It retrieves entities that are structurally linked in the MusicBrainz data model (e.g., releases on a label, release groups by an artist). If you only have a name, [search first](/musicbrainz/searching) to obtain the MBID.
+</Note>
+
+## `musicbrainz-browse`
+
+```emacs-lisp
+(musicbrainz-browse entity link query &optional type)
+```
+
+<ParamField path="query.entity" type="string" required>
+  The type of entity you want returned. For example `"release-group"` to get release groups.
+</ParamField>
+
+<ParamField path="query.link" type="string" required>
+  The entity type you are linking from. For example `"artist"` to browse by artist.
+</ParamField>
+
+<ParamField path="query.query" type="string" required>
+  The MBID of the linking entity.
+</ParamField>
+
+<ParamField path="query.type" type="string">
+  Optional filter applied to the returned entities. For release groups this can be a `|`-delimited list of types such as `"album|ep"`.
+</ParamField>
+
+Returns the raw JSON response as an alist. Wrap with `musicbrainz-format` to get a pretty-printed string.
+
+## Browse vs search vs lookup
+
+| | Search | Lookup | Browse |
+|---|---|---|---|
+| Requires MBID | No | Yes | Yes |
+| Returns | Ranked text matches | Single entity + optional related data | All directly linked entities |
+| Sorted by | Relevance score | N/A | Link entity (fixed order) |
+| Max results per page | 100 | N/A | 25 |
+| Custom sort | N/A | N/A | Not supported |
+
+<Warning>
+  Browse results are limited to 25 per page and the order is determined by the linked entity type — it cannot be changed. To sort results, fetch all pages and sort in Emacs Lisp.
+</Warning>
+
+## Example: Autechre albums and EPs
+
+The MusicBrainz API documentation uses this exact query as its canonical browse example. Here it is in Emacs Lisp:
+
+```emacs-lisp
+;; Raw alist response
+(musicbrainz-browse "release-group"
+                    "artist"
+                    "410c9baf-5469-44f6-9852-826524b80c61"
+                    "album|ep")
+```
+
+The equivalent API URL is:
+```
+https://musicbrainz.org/ws/2/release-group?artist=410c9baf-5469-44f6-9852-826524b80c61&type=album|ep
+```
+
+For more readable output, wrap the call with `musicbrainz-format`:
+
+```emacs-lisp
+(musicbrainz-format
+ (musicbrainz-browse "release-group"
+                     "artist"
+                     "410c9baf-5469-44f6-9852-826524b80c61"
+                     "album|ep"))
+```
+
+## A typical browse workflow
+
+<Steps>
+  <Step title="Obtain the artist MBID">
+    If you do not already have the MBID, search for it.
+
+    ```emacs-lisp
+    (musicbrainz-artist-to-mbid "Autechre")
+    ;; => "410c9baf-5469-44f6-9852-826524b80c61"
+    ```
+  </Step>
+
+  <Step title="Browse linked entities">
+    Pass the MBID as the `query` argument, with the linking entity type as `link`.
+
+    ```emacs-lisp
+    ;; All release groups by Autechre
+    (musicbrainz-browse "release-group" "artist"
+                        "410c9baf-5469-44f6-9852-826524b80c61")
+
+    ;; Only albums and EPs
+    (musicbrainz-browse "release-group" "artist"
+                        "410c9baf-5469-44f6-9852-826524b80c61"
+                        "album|ep")
+    ```
+  </Step>
+
+  <Step title="Format the response">
+    Use `musicbrainz-format` or process the alist directly in your own code.
+
+    ```emacs-lisp
+    (let ((groups (musicbrainz-browse "release-group" "artist"
+                                      "410c9baf-5469-44f6-9852-826524b80c61"
+                                      "album|ep")))
+      (musicbrainz-format groups))
+    ```
+  </Step>
+</Steps>
+
+## Linked entity reference
+
+Each result entity type can be browsed using a specific set of link entities. The full mapping, derived from `musicbrainz-linked-entity-p`:
+
+<AccordionGroup>
+  <Accordion title="area">
+    Can be browsed by: `collection`
+  </Accordion>
+  <Accordion title="artist">
+    Can be browsed by: `area`, `collection`, `recording`, `release`, `release-group`, `work`
+  </Accordion>
+  <Accordion title="collection">
+    Can be browsed by: `area`, `artist`, `editor`, `event`, `label`, `place`, `recording`, `release`, `release-group`, `work`
+  </Accordion>
+  <Accordion title="event">
+    Can be browsed by: `area`, `artist`, `collection`, `place`
+  </Accordion>
+  <Accordion title="instrument">
+    Can be browsed by: `collection`
+  </Accordion>
+  <Accordion title="label">
+    Can be browsed by: `area`, `collection`, `release`
+  </Accordion>
+  <Accordion title="place">
+    Can be browsed by: `area`, `collection`
+  </Accordion>
+  <Accordion title="recording">
+    Can be browsed by: `artist`, `collection`, `release`, `work`
+  </Accordion>
+  <Accordion title="release">
+    Can be browsed by: `area`, `artist`, `collection`, `label`, `track`, `track_artist`, `recording`, `release-group`
+  </Accordion>
+  <Accordion title="release-group">
+    Can be browsed by: `artist`, `collection`, `release`
+  </Accordion>
+  <Accordion title="series">
+    Can be browsed by: `collection`
+  </Accordion>
+  <Accordion title="work">
+    Can be browsed by: `artist`, `collection`
+  </Accordion>
+  <Accordion title="url">
+    Can be browsed by: `resource`
+  </Accordion>
+</AccordionGroup>
+
+## More browse examples
+
+<Tabs>
+  <Tab title="Releases by label">
+    ```emacs-lisp
+    ;; All releases on Warp Records
+    ;; MBID for Warp: 46f0f4cd-8aab-4b33-b698-f459faf64190
+    (musicbrainz-browse "release"
+                        "label"
+                        "46f0f4cd-8aab-4b33-b698-f459faf64190")
+    ```
+  </Tab>
+  <Tab title="Recordings in a release">
+    ```emacs-lisp
+    ;; All recordings on a specific release
+    (musicbrainz-browse "recording"
+                        "release"
+                        "ec1ecfcc-f529-43d1-8aa6-2c7051ede00c")
+    ```
+  </Tab>
+  <Tab title="Works by artist">
+    ```emacs-lisp
+    ;; All works credited to an artist
+    (musicbrainz-browse "work"
+                        "artist"
+                        "410c9baf-5469-44f6-9852-826524b80c61")
+    ```
+  </Tab>
+</Tabs>

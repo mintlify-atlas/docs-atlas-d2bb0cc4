@@ -1,0 +1,262 @@
+---
+title: 'Searching MusicBrainz — Artists, Labels, Recordings'
+description: 'Use musicbrainz-search and its type-specific helpers to query artists, labels, recordings, releases, and more with full Lucene syntax support.'
+keywords: ['musicbrainz search', 'artist search', 'recording search', 'lucene', 'MBID', 'emacs']
+---
+
+Searching is the entry point when you do not yet have an MBID. The MusicBrainz search API is backed by a Lucene index, so every function in this section accepts the full Lucene query syntax — field qualifiers, boolean operators, wildcards, and ranges. Results are ranked by relevance score (0–100).
+
+<Info>
+  Search is the only query type that does not require an MBID. Once you have a result you can use its MBID with `musicbrainz-lookup` or `musicbrainz-browse`.
+</Info>
+
+## Generic search
+
+### `musicbrainz-search`
+
+The low-level entry point. Pass any valid search type and a query string; optionally bound the result set with `limit` and `offset`.
+
+```emacs-lisp
+(musicbrainz-search type query &optional limit offset)
+```
+
+<ParamField path="query.type" type="string" required>
+  Entity index to search. One of: `annotation`, `area`, `artist`, `cdstub`, `event`, `instrument`, `label`, `place`, `recording`, `release`, `release-group`, `series`, `tag`, `work`, `url`. See `musicbrainz-search-types`.
+</ParamField>
+
+<ParamField path="query.query" type="string" required>
+  Free-text or Lucene search query. The full [Lucene classic query syntax](https://lucene.apache.org/core/7_7_2/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#package.description) is supported.
+</ParamField>
+
+<ParamField path="query.limit" type="number" default="25">
+  Number of results to return. Must be between 1 and 100 inclusive. Defaults to 25 when called interactively; defaults to 1 when called from code (the internal default in the implementation).
+</ParamField>
+
+<ParamField path="query.offset" type="number" default="0">
+  Zero-based offset for paging through results beyond the first page.
+</ParamField>
+
+Returns the raw JSON response as an alist. When called interactively (`M-x musicbrainz-search`) it pretty-prints the response in the minibuffer.
+
+```emacs-lisp
+;; Search for artists named Autechre
+(musicbrainz-search "artist" "Autechre")
+
+;; Lucene field query: artist country is GB, sort name starts with A
+(musicbrainz-search "artist" "country:GB AND sortname:A*" 10)
+
+;; Page through recording results
+(musicbrainz-search "recording" "tri repetae" 25 25)
+```
+
+### `musicbrainz-find`
+
+A heuristic general-purpose entry point. Pass a query string or an MBID; the function detects which kind of input it received and routes accordingly. Heuristic handling is still being expanded — use specific functions for reliable results.
+
+```emacs-lisp
+(musicbrainz-find query &rest extras)
+```
+
+```emacs-lisp
+;; String query — searches artists and recordings
+(musicbrainz-find "Autechre")
+
+;; MBID — performs a lookup
+(musicbrainz-find "410c9baf-5469-44f6-9852-826524b80c61")
+```
+
+## Pagination
+
+Use `limit` and `offset` together to page through large result sets.
+
+```emacs-lisp
+;; First 25 results
+(musicbrainz-search "release" "tri repetae" 25 0)
+
+;; Next 25 results
+(musicbrainz-search "release" "tri repetae" 25 25)
+```
+
+<Tip>
+  The limit is capped at 100 by the API. To retrieve more than 100 results you must issue multiple requests with increasing offsets.
+</Tip>
+
+## Artist search
+
+### `musicbrainz-search-artist`
+
+Search for artists by name. With no `limit` each result is formatted as `name | MBID`; with a limit the score is prepended.
+
+```emacs-lisp
+(musicbrainz-search-artist artist &optional limit)
+```
+
+```emacs-lisp
+(musicbrainz-search-artist "Autechre")
+;; => ("Autechre | 410c9baf-5469-44f6-9852-826524b80c61 |\n" ...)
+
+(musicbrainz-search-artist "Autechre" 5)
+;; => ("100 | Autechre | 410c9baf-5469-44f6-9852-826524b80c61 |\n" ...)
+```
+
+### `musicbrainz-artist-to-mbid`
+
+Returns the MBID for an artist when there is a 100% match. Returns `nil` when no exact match exists — use `musicbrainz-disambiguate-artist` in that case.
+
+```emacs-lisp
+(musicbrainz-artist-to-mbid artist)
+```
+
+```emacs-lisp
+(musicbrainz-artist-to-mbid "Autechre")
+;; => "410c9baf-5469-44f6-9852-826524b80c61"
+
+(musicbrainz-artist-to-mbid "Bad Seeds")
+;; => "7feb02f2-51fa-422d-838e-2c14ecb4c7b8"  (first 100% match)
+```
+
+<Warning>
+  When multiple artists share a name, `musicbrainz-artist-to-mbid` returns the first 100% match. Use `musicbrainz-disambiguate-artist` to inspect all candidates before committing to an MBID.
+</Warning>
+
+### `musicbrainz-disambiguate-artist`
+
+Returns an `org-mode`-formatted table listing all matched artists with score, name, disambiguation comment, and a linked MBID. Useful when a common name belongs to multiple artists.
+
+```emacs-lisp
+(musicbrainz-disambiguate-artist artist &optional limit)
+```
+
+```emacs-lisp
+(musicbrainz-disambiguate-artist "John Williams" 3)
+```
+
+Produces an org-mode table:
+
+```
+| Artist: John Williams                                          | MBID                                 |
+| 100 | John Williams, American score composer                     | 53b106e7-0cc6-42cc-ac95-ed8d30a3a98e |
+|  94 | John Williams, classical guitarist                         | 8b8a38a9-a290-4560-84f6-3d4466e8d791 |
+|  92 | John Williams, English A&R executive, producer, songwriter | eb5d7680-0c00-4b0c-b6eb-9605ff77723d |
+```
+
+The default limit is 11. Each MBID in the table is an `org-mode` hyperlink to the artist's MusicBrainz page.
+
+## Label search
+
+### `musicbrainz-search-label`
+
+Search for record labels. Without a limit the output is `name | MBID`; with a limit it includes score, disambiguation, and active date range.
+
+```emacs-lisp
+(musicbrainz-search-label label &optional limit)
+```
+
+```emacs-lisp
+;; Quick lookup — name and MBID only
+(musicbrainz-search-label "Warp")
+;; => ("Warp | 46f0f4cd-8aab-4b33-b698-f459faf64190 |\n")
+
+;; Detailed output with score and date range
+(musicbrainz-search-label "Music" 5)
+;; => ("100 | Sony Music | global brand... | 9e6b4d7f-... |" ...)
+```
+
+## Recording, release, and work search
+
+These functions are generated by the `musicbrainz--defsearch-2` macro. Each accepts a query string and an optional result limit.
+
+### `musicbrainz-search-recording`
+
+```emacs-lisp
+(musicbrainz-search-recording query &optional limit)
+```
+
+```emacs-lisp
+(musicbrainz-search-recording "tri repetae" 5)
+;; Returns: score | title, artist | MBID link per result
+```
+
+### `musicbrainz-search-release`
+
+```emacs-lisp
+(musicbrainz-search-release query &optional limit)
+```
+
+```emacs-lisp
+(musicbrainz-search-release "tri repetae" 3)
+;; Returns: score | title | artist | MBID link per result
+```
+
+### `musicbrainz-search-work`
+
+```emacs-lisp
+(musicbrainz-search-work query &optional limit)
+```
+
+```emacs-lisp
+(musicbrainz-search-work "chiastic slide" 5)
+;; Returns: score | title | MBID link per result
+```
+
+## Additional search functions
+
+The following functions are generated by the same macro and follow the same `(query &optional limit)` signature:
+
+| Function | Entity searched | Output fields |
+|---|---|---|
+| `musicbrainz-search-annotation` | Annotations | Score, type, name, text, MBID link |
+| `musicbrainz-search-area` | Geographic areas | Name, MBID link |
+| `musicbrainz-search-event` | Events | Name, MBID link |
+| `musicbrainz-search-instrument` | Instruments | Name, type, MBID link |
+| `musicbrainz-search-place` | Places | Name, MBID link |
+| `musicbrainz-search-series` | Series | Name, MBID link |
+| `musicbrainz-search-url` | URLs | Score, resource URL, MBID link |
+
+## Lucene search syntax
+
+The `query` parameter passed to any search function is forwarded directly to the MusicBrainz Lucene search server. You can use:
+
+<AccordionGroup>
+  <Accordion title="Field qualifiers">
+    Restrict a term to a specific field using `field:value` syntax.
+
+    ```emacs-lisp
+    ;; Search only the artist name field
+    (musicbrainz-search "artist" "name:Autechre")
+
+    ;; Recordings with a specific artist credit
+    (musicbrainz-search "recording" "artist:autechre AND title:fold4")
+    ```
+  </Accordion>
+
+  <Accordion title="Boolean operators">
+    Combine terms with `AND`, `OR`, `NOT`, or use `+` and `-` prefixes.
+
+    ```emacs-lisp
+    ;; Artist must be from UK OR US
+    (musicbrainz-search "artist" "country:GB OR country:US")
+
+    ;; Release-group that is an album, not a single
+    (musicbrainz-search "release-group" "primarytype:album NOT secondarytype:single")
+    ```
+  </Accordion>
+
+  <Accordion title="Wildcards and ranges">
+    `*` matches any sequence of characters; `?` matches a single character. Ranges use `[A TO Z]` syntax.
+
+    ```emacs-lisp
+    ;; Artist names starting with "Ae"
+    (musicbrainz-search "artist" "name:Ae*")
+
+    ;; Releases from the 1990s
+    (musicbrainz-search "release" "date:[1990 TO 1999]")
+    ```
+  </Accordion>
+
+  <Accordion title="Special characters">
+    The following characters have special meaning in Lucene and must be escaped with `\` when used literally. They are listed in `musicbrainz-qeury-special-chars`:
+
+    `+` `-` `&` `|` `!` `(` `)` `{` `}` `[` `]` `^` `"` `~` `*` `?` `:` `\` `/`
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,186 @@
+---
+title: 'MusicBrainz Identifiers (MBIDs) — Format and Lookup'
+description: 'Learn what MBIDs are, which entities they identify, how to validate them with musicbrainz-mbid-p, and how to resolve ambiguous artist names to a unique MBID.'
+keywords: ['MBID', 'MusicBrainz Identifier', 'UUID', 'artist MBID', 'musicbrainz-mbid-p', 'disambiguation']
+---
+
+An MBID (MusicBrainz Identifier) is a 36-character Universally Unique Identifier permanently assigned to every entity in the MusicBrainz database. MBIDs are the stable, unambiguous handles that make MusicBrainz useful as a "universal lingua franca for music": no matter how an artist's name is spelled or how a release is titled in different regions, its MBID never changes.
+
+## Format
+
+An MBID follows the standard UUID v3 or v4 format:
+
+```
+xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+For example:
+```
+410c9baf-5469-44f6-9852-826524b80c61
+```
+
+That is exactly 36 characters: 8 hex digits, a hyphen, 4 hex digits, a hyphen, 4 hex digits, a hyphen, 4 hex digits, a hyphen, 12 hex digits.
+
+## Which entities have MBIDs
+
+Every core entity in MusicBrainz has a permanent MBID:
+
+| Entity type | Example use |
+|---|---|
+| Artist | Uniquely identify a musician, band, or ensemble |
+| Release group | Identify an album or single regardless of edition |
+| Release | A specific edition or pressing of a release |
+| Recording | A particular audio performance |
+| Work | An abstract musical composition |
+| Label | A record label or imprint |
+| Area | A country, city, or region |
+| Place | A specific venue or studio |
+| URL | An external link attached to a MusicBrainz entity |
+| Track | A track on a release (MBIDs assigned but tracks have fewer shared entity properties) |
+
+## `musicbrainz-mbid-p`
+
+Validates that a string is a well-formed MBID. The check is permissive — it verifies length and character set but does not confirm the MBID exists in the database.
+
+```emacs-lisp
+(musicbrainz-mbid-p mbid)
+```
+
+The function matches the pattern:
+
+```
+[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+```
+
+```emacs-lisp
+(musicbrainz-mbid-p "410c9baf-5469-44f6-9852-826524b80c61")
+;; => t
+
+(musicbrainz-mbid-p "not-an-mbid")
+;; => nil
+
+(musicbrainz-mbid-p "410c9baf-5469-44f6-9852")
+;; => nil  (too short)
+```
+
+`musicbrainz-lookup` calls this internally and raises a `user-error` if you supply an invalid MBID.
+
+## Finding an MBID by name
+
+### `musicbrainz-artist-to-mbid`
+
+Returns the MBID for an artist when there is exactly one 100% relevance match. If the name is ambiguous, use `musicbrainz-disambiguate-artist` instead.
+
+```emacs-lisp
+(musicbrainz-artist-to-mbid "Autechre")
+;; => "410c9baf-5469-44f6-9852-826524b80c61"
+```
+
+If no 100% match is found the function returns `nil`. This can happen when the name is incomplete, misspelled, or genuinely shared by multiple artists.
+
+## Handling ambiguous names
+
+Many artist names belong to more than one entry in MusicBrainz. The canonical example from the MusicBrainz documentation:
+
+```
+John Williams, the soundtrack composer and conductor:
+  53b106e7-0cc6-42cc-ac95-ed8d30a3a98e
+
+John Williams, the classical guitar player:
+  8b8a38a9-a290-4560-84f6-3d4466e8d791
+```
+
+### `musicbrainz-disambiguate-artist`
+
+Returns an `org-mode`-formatted table listing all candidate artists with their relevance score, name, disambiguation string, and a linked MBID. The default limit is 11 results.
+
+```emacs-lisp
+(musicbrainz-disambiguate-artist artist &optional limit)
+```
+
+```emacs-lisp
+(musicbrainz-disambiguate-artist "John Williams" 3)
+```
+
+Output (as an org-mode table):
+
+```
+|     | Artist: John Williams                                          | MBID                                 |
+| 100 | John Williams, American score composer                         | 53b106e7-0cc6-42cc-ac95-ed8d30a3a98e |
+|  94 | John Williams, classical guitarist                             | 8b8a38a9-a290-4560-84f6-3d4466e8d791 |
+|  92 | John Williams, English A&R executive, producer, songwriter...  | eb5d7680-0c00-4b0c-b6eb-9605ff77723d |
+```
+
+Another example with a more dramatic ambiguity — "Bad Seeds" matches multiple distinct acts:
+
+```emacs-lisp
+(musicbrainz-disambiguate-artist "Bad Seeds" 7)
+```
+
+```
+|     | Artist: Bad Seeds                                         | MBID                                 |
+| 100 | Tomorrows Bad Seeds, nil                                  | 7feb02f2-51fa-422d-838e-2c14ecb4c7b8 |
+|  98 | The Bad Seeds, 60s Texas rock band                        | 3e593712-9f70-4b7a-b21b-466016998a3d |
+|  98 | The Bad Seeds, 60's US garage rock band from Erlanger, KY | 34bc9a97-fa78-424e-8ca8-a904f978f041 |
+|  98 | The Bad Seeds, backing band for Nick Cave                 | eb2a8edc-5670-4896-82be-87db38de9583 |
+|  86 | Nick Cave & the Bad Seeds, nil                            | 172e1f1a-504d-4488-b053-6344ba63e6d0 |
+|  50 | The Lightning Seeds, nil                                  | 1ba601a0-3401-4b28-8ddd-9af8203661e8 |
+|  49 | Seeds, UK dancehall                                       | a03cf587-a3d3-4847-ac41-e488f779a313 |
+```
+
+Once you identify the right entry from the table, look it up directly:
+
+```emacs-lisp
+;; Look up Nick Cave & the Bad Seeds specifically
+(musicbrainz-lookup-artist "172e1f1a-504d-4488-b053-6344ba63e6d0")
+```
+
+## Disambiguation workflow
+
+<Steps>
+  <Step title="Try the direct approach">
+    Attempt to resolve a name to a single MBID first.
+
+    ```emacs-lisp
+    (musicbrainz-artist-to-mbid "Bad Seeds")
+    ;; => "7feb02f2-51fa-422d-838e-2c14ecb4c7b8"
+    ;; (first 100% match — may not be the intended artist)
+    ```
+  </Step>
+
+  <Step title="Disambiguate when needed">
+    If the result is uncertain, request a disambiguation table to inspect all candidates.
+
+    ```emacs-lisp
+    (musicbrainz-disambiguate-artist "Bad Seeds" 7)
+    ```
+  </Step>
+
+  <Step title="Select the correct MBID">
+    Copy the MBID from the row that matches your intended artist (use the disambiguation text to distinguish them).
+  </Step>
+
+  <Step title="Verify the MBID">
+    Confirm the MBID is valid and resolve to the correct entity.
+
+    ```emacs-lisp
+    (musicbrainz-mbid-p "172e1f1a-504d-4488-b053-6344ba63e6d0")
+    ;; => t
+
+    (musicbrainz-lookup-artist "172e1f1a-504d-4488-b053-6344ba63e6d0")
+    ;; => "| Nick Cave & the Bad Seeds | ... |"
+    ```
+  </Step>
+</Steps>
+
+## Lucene special characters
+
+When building search queries to find an MBID, be aware that the following characters have special meaning in the Lucene query parser. They are listed in `musicbrainz-qeury-special-chars` and must be escaped with `\` when used as literal characters in a query:
+
+```
++  -  &  |  !  (  )  {  }  [  ]  ^  "  ~  *  ?  :  \  /
+```
+
+<Tip>
+  If a search returns unexpected results, check whether the artist or release name contains any of these characters and escape them in your query string.
+</Tip>

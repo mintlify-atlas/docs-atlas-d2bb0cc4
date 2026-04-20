@@ -1,0 +1,114 @@
+---
+title: 'ListenBrainz Followers and Following Lists'
+description: 'Retrieve ListenBrainz follower and following lists for any user, with list and graph output formats, using listenbrainz-followers and listenbrainz-following.'
+keywords: ['listenbrainz', 'followers', 'following', 'social', 'emacs', 'listenbrainz-followers']
+---
+
+The social functions in `listenbrainz.el` let you inspect the follower and following relationships for any ListenBrainz user. Both functions are read-only and require no authentication token.
+
+## Getting a user's followers
+
+`listenbrainz-followers` fetches the list of users who follow a given username. The output format can be either a plain list or a directed graph notation.
+
+```emacs-lisp
+;; Default list output
+(listenbrainz-followers "zzzkt")
+
+;; Graph output showing the direction of the relationship
+(listenbrainz-followers "zzzkt" "graph")
+```
+
+<ParamField path="query.username" type="string" required>
+  The ListenBrainz username whose followers to retrieve.
+</ParamField>
+
+<ParamField path="query.output" type="string" default="list">
+  Output format. Either `"list"` (default) or `"graph"`.
+</ParamField>
+
+### List format
+
+The default `"list"` output prints one username per row:
+
+```
+follower_username |
+another_username |
+```
+
+### Graph format
+
+The `"graph"` output expresses the follower relationship as a directed edge, showing who follows the queried user:
+
+```
+follower_username -> zzzkt |
+another_username -> zzzkt |
+```
+
+<Tip>
+  The graph format is useful if you want to visualize or process the social graph, for example by piping into a tool that renders dot/graphviz notation.
+</Tip>
+
+## Getting users a person follows
+
+`listenbrainz-following` fetches the list of users that a given user is following.
+
+```emacs-lisp
+(listenbrainz-following "zzzkt")
+```
+
+<ParamField path="query.username" type="string" required>
+  The ListenBrainz username whose following list to retrieve.
+</ParamField>
+
+### Output format
+
+The output is a plain list, one username per row:
+
+```
+followed_username |
+another_followed_username |
+```
+
+## Comparing followers and following
+
+<Tabs>
+  <Tab title="Followers (list)">
+    Users who follow `zzzkt`, one per line:
+
+    ```emacs-lisp
+    (listenbrainz-followers "zzzkt")
+    ```
+  </Tab>
+  <Tab title="Followers (graph)">
+    Followers as directed edges:
+
+    ```emacs-lisp
+    (listenbrainz-followers "zzzkt" "graph")
+    ```
+  </Tab>
+  <Tab title="Following">
+    Users that `zzzkt` follows:
+
+    ```emacs-lisp
+    (listenbrainz-following "zzzkt")
+    ```
+  </Tab>
+</Tabs>
+
+## Unimplemented social features
+
+The following ListenBrainz Social and Pinned Recording API endpoints are not yet implemented in `listenbrainz.el`:
+
+| Endpoint | Status |
+|---|---|
+| `POST /1/user/(user_name)/follow` | Not implemented |
+| `POST /1/user/(user_name)/unfollow` | Not implemented |
+| `POST /1/pin` | Not implemented |
+| `POST /1/pin/unpin` | Not implemented |
+| `POST /1/pin/delete/(row_id)` | Not implemented |
+| `GET /1/(user_name)/pins` | Not implemented |
+| `GET /1/(user_name)/pins/following` | Not implemented |
+
+<Note>
+  The Feedback API (recording feedback, love/hate reactions) and User Timeline API (notifications, timeline events) are also not currently implemented. See the [ListenBrainz API reference](/reference/listenbrainz-api) for a full list of available endpoints.
+</Note>

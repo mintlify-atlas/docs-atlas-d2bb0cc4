@@ -1,0 +1,213 @@
+---
+title: "Configuration Variables for metabrainz.el Packages"
+description: "All defcustom variables for both packages: API endpoints, authentication tokens, user-agent strings, and how to set them via customize, setq, or use-package."
+---
+
+Both packages expose their configuration through Emacs' standard `defcustom` mechanism, which means values can be set interactively via `M-x customize-group`, declared in your `init.el` with `setq`, or managed by a package manager like `use-package`. The variables are collected under two separate customization groups: `musicbrainz` and `listenbrainz`.
+
+---
+
+## musicbrainz.el variables
+
+### `musicbrainz-api-url`
+
+The base URL for all MusicBrainz API requests.
+
+| Property | Value |
+|---|---|
+| Default | `"https://musicbrainz.org/ws/2"` |
+| Type | `string` |
+| Group | `musicbrainz` |
+
+Change this only if you are running a local MusicBrainz mirror or a development instance.
+
+```emacs-lisp
+(setq musicbrainz-api-url "https://musicbrainz.org/ws/2")
+```
+
+---
+
+### `musicbrainz-coverart-api-url`
+
+The base URL for Cover Art Archive requests. Used by `musicbrainz-coverart`, `musicbrainz-coverart-file-front`, and `musicbrainz-coverart-file-back`.
+
+| Property | Value |
+|---|---|
+| Default | `"http://coverartarchive.org"` |
+| Type | `string` |
+| Group | `musicbrainz` |
+
+```emacs-lisp
+(setq musicbrainz-coverart-api-url "http://coverartarchive.org")
+```
+
+<Note>
+  The default URL uses HTTP rather than HTTPS. If you need TLS, set this to `"https://coverartarchive.org"`.
+</Note>
+
+---
+
+### `musicbrainz-api-token`
+
+An authentication token for MusicBrainz endpoints that require it (such as `musicbrainz-lookup-collection-user-collections`).
+
+| Property | Value |
+|---|---|
+| Default | `""` (empty string) |
+| Type | `string` |
+| Group | `musicbrainz` |
+
+<Warning>
+  Do not commit your token to version control. Use a secrets manager or set it from an environment variable.
+</Warning>
+
+```emacs-lisp
+(setq musicbrainz-api-token "your-token-here")
+```
+
+---
+
+### `musicbrainz-user-agent`
+
+The `User-Agent` header sent with every MusicBrainz request. MusicBrainz uses this string to identify your application for [rate limiting](https://wiki.musicbrainz.org/MusicBrainz_API/Rate_Limiting) purposes.
+
+| Property | Value |
+|---|---|
+| Default | `"musicbrainz.el/0.1"` |
+| Type | `string` |
+| Group | `musicbrainz` |
+
+<Warning>
+  MusicBrainz limits unauthenticated applications to approximately one request per second and may block clients that do not set a recognisable User-Agent. Set this to something that identifies your application and includes contact information (e.g. an email address or URL), as recommended by the [MusicBrainz rate limiting guidelines](https://wiki.musicbrainz.org/MusicBrainz_API/Rate_Limiting).
+</Warning>
+
+```emacs-lisp
+;; Recommended format: AppName/version (contact-or-url)
+(setq musicbrainz-user-agent "my-emacs-config/1.0 (me@example.com)")
+```
+
+---
+
+## listenbrainz.el variables
+
+### `listenbrainz-api-url`
+
+The base URL for all ListenBrainz API requests.
+
+| Property | Value |
+|---|---|
+| Default | `"https://api.listenbrainz.org"` |
+| Type | `string` |
+| Group | `listenbrainz` |
+
+```emacs-lisp
+(setq listenbrainz-api-url "https://api.listenbrainz.org")
+```
+
+---
+
+### `listenbrainz-api-token`
+
+Your ListenBrainz API token. Required for `listenbrainz-submit-listen`, `listenbrainz-submit-single-listen`, and `listenbrainz-submit-playing-now`.
+
+| Property | Value |
+|---|---|
+| Default | `""` (empty string) |
+| Type | `string` |
+| Group | `listenbrainz` |
+
+You can find your token on your [ListenBrainz profile page](https://listenbrainz.org/profile/).
+
+<Warning>
+  Do not commit your token to version control. Use a secrets manager or set it from an environment variable in your `init.el`.
+</Warning>
+
+```emacs-lisp
+(setq listenbrainz-api-token "your-listenbrainz-token")
+```
+
+---
+
+## Configuration approaches
+
+Choose the method that fits your Emacs setup.
+
+<CodeGroup>
+
+```emacs-lisp M-x customize-group
+;; Run interactively in Emacs:
+;; M-x customize-group RET musicbrainz RET
+;; M-x customize-group RET listenbrainz RET
+;;
+;; Changes made via customize are saved to custom-file automatically.
+```
+
+```emacs-lisp setq in init.el
+;; Add to your init.el or early-init.el
+
+;; MusicBrainz
+(setq musicbrainz-api-token      "your-mb-token")
+(setq musicbrainz-user-agent     "my-config/1.0 (me@example.com)")
+
+;; ListenBrainz
+(setq listenbrainz-api-token     "your-lb-token")
+```
+
+```emacs-lisp use-package
+;; Using use-package with :custom keyword
+
+(use-package musicbrainz
+  :custom
+  (musicbrainz-api-token  "your-mb-token")
+  (musicbrainz-user-agent "my-config/1.0 (me@example.com)"))
+
+(use-package listenbrainz
+  :custom
+  (listenbrainz-api-token "your-lb-token"))
+```
+
+</CodeGroup>
+
+---
+
+## Keeping secrets out of version control
+
+A common pattern is to load secrets from a file that is excluded from your dotfiles repository:
+
+```emacs-lisp
+;; In init.el — load secrets file if it exists
+(let ((secrets-file (expand-file-name "secrets.el" user-emacs-directory)))
+  (when (file-exists-p secrets-file)
+    (load secrets-file)))
+
+;; In ~/.emacs.d/secrets.el (gitignored)
+(setq musicbrainz-api-token  "your-mb-token")
+(setq listenbrainz-api-token "your-lb-token")
+```
+
+Alternatively, read tokens from environment variables:
+
+```emacs-lisp
+(setq listenbrainz-api-token
+      (or (getenv "LISTENBRAINZ_TOKEN") ""))
+```
+
+---
+
+## Rate limiting
+
+MusicBrainz enforces a rate limit of roughly one request per second for anonymous clients and is more lenient with authenticated or well-identified clients. The `musicbrainz-user-agent` variable is the primary mechanism for identification.
+
+The recommended User-Agent format per the [MusicBrainz wiki](https://wiki.musicbrainz.org/MusicBrainz_API/Rate_Limiting) is:
+
+```
+ApplicationName/version (contact-or-url)
+```
+
+For example:
+
+```emacs-lisp
+(setq musicbrainz-user-agent "org-music/0.3 (https://github.com/you/org-music)")
+```
+
+Setting `musicbrainz-api-token` also helps: authenticated requests are subject to a separate, more generous rate limit tier.

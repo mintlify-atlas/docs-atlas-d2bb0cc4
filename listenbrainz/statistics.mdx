@@ -1,0 +1,154 @@
+---
+title: 'ListenBrainz Listening Statistics — Top Artists and Tracks'
+description: "Query a ListenBrainz user's top artists, releases, and recordings over weekly, monthly, yearly, or all-time ranges using listenbrainz.el."
+keywords: ['listenbrainz', 'statistics', 'top artists', 'top releases', 'top recordings', 'emacs', 'listenbrainz-stats']
+---
+
+The statistics functions retrieve aggregated listening data for any ListenBrainz user. You can query top artists, releases, and recordings across configurable time ranges. No authentication token is required for these endpoints.
+
+## Time ranges
+
+All statistics functions accept an optional `range` parameter:
+
+| Value | Description |
+|---|---|
+| `"week"` | Last 7 days |
+| `"month"` | Last 30 days |
+| `"year"` | Last 365 days |
+| `"all_time"` | All available history (default) |
+
+When omitted, `range` defaults to `"all_time"`.
+
+## Top artists
+
+`listenbrainz-stats-artists` returns a ranked list of the most-listened-to artists for a given user.
+
+```emacs-lisp
+;; All-time top artists (default)
+(listenbrainz-stats-artists "zzzkt")
+
+;; Top 10 artists this month
+(listenbrainz-stats-artists "zzzkt" 10 "month")
+```
+
+<ParamField path="query.username" type="string" required>
+  The ListenBrainz username.
+</ParamField>
+
+<ParamField path="query.count" type="number" default="25">
+  Number of results to return. Defaults to `25`. Maximum is `100`.
+</ParamField>
+
+<ParamField path="query.range" type="string" default="all_time">
+  Time range. One of `"week"`, `"month"`, `"year"`, or `"all_time"`.
+</ParamField>
+
+### Output format
+
+Each row contains the artist name and listen count:
+
+```
+artist_name | listen_count |
+```
+
+## Top releases
+
+`listenbrainz-stats-releases` returns the most-listened-to releases (albums).
+
+```emacs-lisp
+;; All-time top releases
+(listenbrainz-stats-releases "zzzkt")
+
+;; Top 5 releases this year
+(listenbrainz-stats-releases "zzzkt" 5 "year")
+```
+
+<ParamField path="query.username" type="string" required>
+  The ListenBrainz username.
+</ParamField>
+
+<ParamField path="query.count" type="number" default="25">
+  Number of results to return. Defaults to `25`. Maximum is `100`.
+</ParamField>
+
+<ParamField path="query.range" type="string" default="all_time">
+  Time range. One of `"week"`, `"month"`, `"year"`, or `"all_time"`.
+</ParamField>
+
+### Output format
+
+Each row contains the artist name, release title, and listen count:
+
+```
+artist_name | release_name | listen_count |
+```
+
+## Top recordings
+
+`listenbrainz-stats-recordings` returns the most-listened-to individual tracks.
+
+```emacs-lisp
+;; All-time top recordings
+(listenbrainz-stats-recordings "zzzkt")
+
+;; Top 13 recordings this month
+(listenbrainz-stats-recordings "zzzkt" 13 "month")
+```
+
+<ParamField path="query.username" type="string" required>
+  The ListenBrainz username.
+</ParamField>
+
+<ParamField path="query.count" type="number" default="25">
+  Number of results to return. Defaults to `25`. Maximum is `100`.
+</ParamField>
+
+<ParamField path="query.range" type="string" default="all_time">
+  Time range. One of `"week"`, `"month"`, `"year"`, or `"all_time"`.
+</ParamField>
+
+### Output format
+
+Each row contains the artist name, track name, and listen count:
+
+```
+artist_name | track_name | listen_count |
+```
+
+## Comparing time ranges
+
+<Tabs>
+  <Tab title="All time">
+    ```emacs-lisp
+    (listenbrainz-stats-artists "zzzkt")
+    (listenbrainz-stats-releases "zzzkt")
+    (listenbrainz-stats-recordings "zzzkt")
+    ```
+  </Tab>
+  <Tab title="This month">
+    ```emacs-lisp
+    (listenbrainz-stats-artists "zzzkt" 25 "month")
+    (listenbrainz-stats-releases "zzzkt" 25 "month")
+    (listenbrainz-stats-recordings "zzzkt" 13 "month")
+    ```
+  </Tab>
+  <Tab title="This week">
+    ```emacs-lisp
+    (listenbrainz-stats-artists "zzzkt" 10 "week")
+    (listenbrainz-stats-releases "zzzkt" 10 "week")
+    (listenbrainz-stats-recordings "zzzkt" 10 "week")
+    ```
+  </Tab>
+</Tabs>
+
+## Output column summary
+
+| Function | Columns |
+|---|---|
+| `listenbrainz-stats-artists` | `artist_name` \| `listen_count` |
+| `listenbrainz-stats-releases` | `artist_name` \| `release_name` \| `listen_count` |
+| `listenbrainz-stats-recordings` | `artist_name` \| `track_name` \| `listen_count` |
+
+<Note>
+  Statistics data may not reflect listens submitted very recently. ListenBrainz processes statistics periodically, so newly submitted listens may take some time to appear in results.
+</Note>

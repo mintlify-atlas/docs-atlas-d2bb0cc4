@@ -1,0 +1,301 @@
+---
+title: 'MusicBrainz Lookup — Retrieve Any Entity by MBID'
+description: 'Retrieve complete metadata for any MusicBrainz entity by MBID, with optional inc subqueries for related artists, releases, recordings, and more.'
+keywords: ['musicbrainz lookup', 'MBID', 'artist lookup', 'recording lookup', 'release lookup', 'inc subquery']
+---
+
+Lookup requests retrieve a single entity by its exact MBID. They are the most precise query type: you get back every stored field for that entity, and optional `inc` parameters let you include related data — recordings, releases, labels, ISRCs, and relationships — in a single request.
+
+<Note>
+  Lookup requires a valid MBID. If you only have a name, start with a [search](/musicbrainz/searching) to obtain the MBID first.
+</Note>
+
+## Generic lookup
+
+### `musicbrainz-lookup`
+
+The low-level function that all specific lookup helpers call internally. Use it directly when you need a custom `inc` parameter combination, or when no specific helper exists for your entity type.
+
+```emacs-lisp
+(musicbrainz-lookup entity mbid &optional inc)
+```
+
+<ParamField path="query.entity" type="string" required>
+  A core entity type. Must be one of the values in `musicbrainz-entities-core`: `area`, `artist`, `event`, `genre`, `instrument`, `label`, `place`, `recording`, `release`, `release-group`, `series`, `work`, `url`.
+</ParamField>
+
+<ParamField path="query.mbid" type="string" required>
+  A 36-character MBID string. Validated with `musicbrainz-mbid-p` before the request is made.
+</ParamField>
+
+<ParamField path="query.inc" type="string">
+  A `+`-delimited list of subquery names to include in the response. For example `"recordings+releases"`. See the subquery reference below.
+</ParamField>
+
+Returns the raw JSON response as an alist. When called interactively, it pretty-prints to the minibuffer.
+
+```emacs-lisp
+;; Basic artist lookup
+(musicbrainz-lookup "artist" "410c9baf-5469-44f6-9852-826524b80c61")
+
+;; Artist lookup with releases and recordings included
+(musicbrainz-lookup "artist" "410c9baf-5469-44f6-9852-826524b80c61" "releases")
+
+;; Recording with ISRC codes and URL relationships
+(musicbrainz-lookup "recording" "83730176-89ec-41a5-a4b6-476998f6291c" "isrcs+url-rels")
+```
+
+## Subqueries (`inc`)
+
+The `inc` parameter extends a lookup response with related data. Valid subqueries depend on the entity type:
+
+| Entity | Valid `inc` values |
+|---|---|
+| `artist` | `recordings`, `releases`, `release-groups`, `works` |
+| `label` | `releases` |
+| `recording` | `artists`, `releases`, `isrcs`, `url-rels` |
+| `release` | `artists`, `collections`, `labels`, `recordings`, `release-groups` |
+| `release-group` | `artists`, `releases` |
+| `collection` | `user-collections` (requires authentication) |
+
+Relationship lookups use the pattern `<entity>-rels`. All valid relationship types are listed in `musicbrainz-relationships`:
+
+`area-rels` `artist-rels` `event-rels` `instrument-rels` `label-rels` `place-rels` `recording-rels` `release-rels` `release-group-rels` `series-rels` `url-rels` `work-rels`
+
+## Relationship lookup
+
+### `musicbrainz-relations`
+
+A convenience wrapper over `musicbrainz-lookup` that constructs the `<relation>-rels` inc string for you.
+
+```emacs-lisp
+(musicbrainz-relations entity relation mbid)
+```
+
+```emacs-lisp
+;; Get all URL relationships for an artist
+(musicbrainz-relations "artist" "url" "410c9baf-5469-44f6-9852-826524b80c61")
+
+;; Get label relationships for a release
+(musicbrainz-relations "release" "label" "ec1ecfcc-f529-43d1-8aa6-2c7051ede00c")
+```
+
+## Artist lookups
+
+### `musicbrainz-lookup-artist`
+
+Returns name, disambiguation, type, and a linked MBID for the artist.
+
+```emacs-lisp
+(musicbrainz-lookup-artist "410c9baf-5469-44f6-9852-826524b80c61")
+;; => "| Autechre | electronic music duo | Group | 410c9baf-... |"
+```
+
+### `musicbrainz-lookup-artist-recordings`
+
+Returns all recordings credited to the artist (up to 25).
+
+```emacs-lisp
+(musicbrainz-lookup-artist-recordings "410c9baf-5469-44f6-9852-826524b80c61")
+;; => list of "title | MBID link" strings
+```
+
+### `musicbrainz-lookup-artist-releases`
+
+Returns releases associated with the artist, formatted as `date | title | packaging | MBID link`.
+
+```emacs-lisp
+(musicbrainz-lookup-artist-releases "410c9baf-5469-44f6-9852-826524b80c61")
+```
+
+### `musicbrainz-lookup-artist-release-groups`
+
+Returns release groups (albums, singles, EPs) associated with the artist.
+
+```emacs-lisp
+(musicbrainz-lookup-artist-release-groups "410c9baf-5469-44f6-9852-826524b80c61")
+;; => list of "date | title | type | MBID link" strings
+```
+
+### `musicbrainz-lookup-artist-works`
+
+Returns musical works (compositions, not recordings) credited to the artist.
+
+```emacs-lisp
+(musicbrainz-lookup-artist-works "410c9baf-5469-44f6-9852-826524b80c61")
+```
+
+## Recording lookups
+
+### `musicbrainz-lookup-recording`
+
+Returns the first release date, title, and MBID link for a recording.
+
+```emacs-lisp
+(musicbrainz-lookup-recording "83730176-89ec-41a5-a4b6-476998f6291c")
+;; => "| [untitled] | 83730176-89ec-41a5-a4b6-476998f6291c |"
+```
+
+### `musicbrainz-lookup-recording-artists`
+
+Returns the artist credits for a recording.
+
+```emacs-lisp
+(musicbrainz-lookup-recording-artists "83730176-89ec-41a5-a4b6-476998f6291c")
+```
+
+### `musicbrainz-lookup-recording-releases`
+
+Returns all releases that contain this recording, with date, title, and packaging.
+
+```emacs-lisp
+(musicbrainz-lookup-recording-releases "83730176-89ec-41a5-a4b6-476998f6291c")
+```
+
+### `musicbrainz-lookup-recording-isrcs`
+
+Returns the ISRC codes assigned to a recording.
+
+```emacs-lisp
+(musicbrainz-lookup-recording-isrcs "83730176-89ec-41a5-a4b6-476998f6291c")
+```
+
+### `musicbrainz-lookup-recording-url-rels`
+
+Returns URL relationships (streaming links, Wikipedia entries, etc.) attached to a recording.
+
+```emacs-lisp
+(musicbrainz-lookup-recording-url-rels "83730176-89ec-41a5-a4b6-476998f6291c")
+```
+
+## Release lookups
+
+### `musicbrainz-lookup-release`
+
+Returns the date, title, packaging format, and MBID link for a release.
+
+```emacs-lisp
+(musicbrainz-lookup-release "ec1ecfcc-f529-43d1-8aa6-2c7051ede00c")
+;; => "| 1990 | Autechre / Saw You | Cassette Case | ec1ecfcc-... |"
+```
+
+### `musicbrainz-lookup-release-artists`
+
+Returns the artist credits for a release.
+
+```emacs-lisp
+(musicbrainz-lookup-release-artists "ec1ecfcc-f529-43d1-8aa6-2c7051ede00c")
+```
+
+## Release group lookups
+
+### `musicbrainz-lookup-release-group`
+
+Returns the first release date, title, primary type, and MBID link for a release group.
+
+```emacs-lisp
+(musicbrainz-lookup-release-group "fe4acfe9-6d1e-3565-8857-fb16ddc492ab")
+;; => "| 1995 | Tri Repetae | Album | fe4acfe9-... |"
+```
+
+### `musicbrainz-lookup-release-group-artists`
+
+Returns the artist credits for a release group.
+
+```emacs-lisp
+(musicbrainz-lookup-release-group-artists "fe4acfe9-6d1e-3565-8857-fb16ddc492ab")
+```
+
+## Label lookups
+
+### `musicbrainz-lookup-label`
+
+Returns the label name, disambiguation, and MBID link.
+
+```emacs-lisp
+(musicbrainz-lookup-label "8943d408-940c-403b-a01d-9036c227d50f")
+```
+
+### `musicbrainz-lookup-label-releases`
+
+Returns releases published on this label, formatted as `date | title | MBID link`.
+
+```emacs-lisp
+(musicbrainz-lookup-label-releases "8943d408-940c-403b-a01d-9036c227d50f")
+```
+
+## Other entity lookups
+
+The following lookup functions follow the same pattern — pass an MBID, get back formatted output:
+
+<AccordionGroup>
+  <Accordion title="Area, event, genre, instrument, place, series, work, URL">
+    | Function | Returns |
+    |---|---|
+    | `musicbrainz-lookup-area` | Name, MBID link |
+    | `musicbrainz-lookup-event` | Name, MBID link |
+    | `musicbrainz-lookup-genre` | Name, MBID link |
+    | `musicbrainz-lookup-instrument` | Name, type, MBID link |
+    | `musicbrainz-lookup-place` | Name, MBID link |
+    | `musicbrainz-lookup-series` | Title, MBID link |
+    | `musicbrainz-lookup-work` | Title, MBID link |
+    | `musicbrainz-lookup-url` | Name, MBID link |
+
+    ```emacs-lisp
+    ;; Look up a specific instrument
+    (musicbrainz-lookup-instrument "303d4f1a-f799-4c42-9bac-dbedd9139e91")
+
+    ;; Look up a genre
+    (musicbrainz-lookup-genre "68c81274-5770-4e7b-a4bf-ab0d7d425d99")
+    ```
+  </Accordion>
+
+  <Accordion title="Collection lookups (requires authentication)">
+    `musicbrainz-lookup-collection` and `musicbrainz-lookup-collection-user-collections` retrieve user collection data. These require a valid `musicbrainz-api-token` to be set.
+
+    ```emacs-lisp
+    (setq musicbrainz-api-token "your-token-here")
+    (musicbrainz-lookup-collection "your-collection-mbid")
+    (musicbrainz-lookup-collection-user-collections "your-collection-mbid")
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## A complete lookup workflow
+
+<Steps>
+  <Step title="Search for the artist">
+    Start with a name search to retrieve the MBID.
+
+    ```emacs-lisp
+    (musicbrainz-artist-to-mbid "Autechre")
+    ;; => "410c9baf-5469-44f6-9852-826524b80c61"
+    ```
+  </Step>
+
+  <Step title="Verify the MBID">
+    Optionally confirm it is well-formed.
+
+    ```emacs-lisp
+    (musicbrainz-mbid-p "410c9baf-5469-44f6-9852-826524b80c61")
+    ;; => t
+    ```
+  </Step>
+
+  <Step title="Look up the artist">
+    Retrieve the artist record.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-artist "410c9baf-5469-44f6-9852-826524b80c61")
+    ;; => "| Autechre | electronic music duo | Group | 410c9baf-... |"
+    ```
+  </Step>
+
+  <Step title="Fetch related data">
+    Use a subquery to pull in releases in the same request.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-artist-releases "410c9baf-5469-44f6-9852-826524b80c61")
+    ```
+  </Step>
+</Steps>

@@ -1,0 +1,178 @@
+---
+title: 'Submit Listens and Now-Playing Events to ListenBrainz'
+description: 'Submit music listening data from Emacs using listenbrainz.el — record single listens, import history, and broadcast now-playing status.'
+keywords: ['listenbrainz', 'submit listen', 'scrobbling', 'playing now', 'emacs', 'listenbrainz-submit-listen']
+---
+
+Submitting listens lets you record music listening activity to your ListenBrainz account. The package supports three listen types: `single` (a completed listen), `import` (historical data), and `playing_now` (currently playing). All submission functions require a valid `listenbrainz-api-token`.
+
+<Warning>
+  All submission functions will fail silently if `listenbrainz-api-token` is not set or is invalid. Validate your token before submitting listens.
+</Warning>
+
+## Setting up your token
+
+```emacs-lisp
+(setq listenbrainz-api-token "000-000-000")
+```
+
+## Validating your token
+
+Before submitting, use `listenbrainz-validate-token` to confirm your token is accepted by the API.
+
+```emacs-lisp
+(listenbrainz-validate-token listenbrainz-api-token)
+```
+
+If valid, the function returns the associated username as a string. If invalid, it returns `nil` and emits a message.
+
+<ParamField path="query.token" type="string" required>
+  The API token string to validate. Typically pass `listenbrainz-api-token`.
+</ParamField>
+
+## Timestamps
+
+ListenBrainz requires UNIX epoch timestamps in UTC. The `listenbrainz-timestamp` function returns a compatible value.
+
+```emacs-lisp
+;; Current time as a UNIX epoch integer
+(listenbrainz-timestamp)
+
+;; A specific time value
+(listenbrainz-timestamp (encode-time 0 0 12 1 1 2024))
+```
+
+<ParamField path="query.time" type="time" default="current-time">
+  An optional Emacs time value. Defaults to `(current-time)` when omitted.
+</ParamField>
+
+<Note>
+  Timestamps are automatically attached by `listenbrainz-submit-listen` for `single` listens. The `playing_now` type does **not** include a `listened_at` timestamp per the ListenBrainz API spec.
+</Note>
+
+## Submitting a single listen
+
+Use `listenbrainz-submit-single-listen` to record a completed track play. This is the recommended high-level entry point for most use cases.
+
+```emacs-lisp
+;; With artist and track
+(listenbrainz-submit-single-listen "farmersmanual" "808808008088 (11)")
+
+;; With artist, track, and release (album)
+(listenbrainz-submit-single-listen "Matthew Thomas" "Taema" "Architecture")
+```
+
+<ParamField path="query.artist" type="string" required>
+  The artist name.
+</ParamField>
+
+<ParamField path="query.track" type="string" required>
+  The track title.
+</ParamField>
+
+<ParamField path="query.release" type="string">
+  Optional. The release (album) title.
+</ParamField>
+
+## Marking a track as currently playing
+
+Use `listenbrainz-submit-playing-now` to broadcast which track is currently playing. This appears on your ListenBrainz profile in real time.
+
+```emacs-lisp
+(listenbrainz-submit-playing-now "farmersmanual" "808808008088 (11)")
+```
+
+<Note>
+  `playing_now` listens do not include a `listened_at` timestamp. They are cleared automatically when you submit the next listen or after a short timeout period.
+</Note>
+
+<ParamField path="query.artist" type="string" required>
+  The artist name.
+</ParamField>
+
+<ParamField path="query.track" type="string" required>
+  The track title.
+</ParamField>
+
+<ParamField path="query.release" type="string">
+  Optional. The release (album) title.
+</ParamField>
+
+## Low-level submission function
+
+`listenbrainz-submit-listen` is the underlying function used by the convenience wrappers. Use it directly when you need full control over the listen type, or to submit import-type listens.
+
+```emacs-lisp
+;; Submit a single listen
+(listenbrainz-submit-listen "single" "Autechre" "Pule")
+
+;; Submit a playing_now listen
+(listenbrainz-submit-listen "playing_now" "Autechre" "Pule")
+
+;; Import a historical listen
+(listenbrainz-submit-listen "import" "Autechre" "Pule" "Oversteps")
+```
+
+<ParamField path="query.type" type="string" required>
+  Listen type. One of `"single"`, `"import"`, or `"playing_now"`.
+</ParamField>
+
+<ParamField path="query.artist" type="string" required>
+  The artist name.
+</ParamField>
+
+<ParamField path="query.track" type="string" required>
+  The track title.
+</ParamField>
+
+<ParamField path="query.release" type="string">
+  Optional. The release (album) title.
+</ParamField>
+
+## Listen type comparison
+
+<Tabs>
+  <Tab title="single">
+    Records a completed listen with the current UNIX timestamp attached automatically.
+
+    ```emacs-lisp
+    (listenbrainz-submit-single-listen "Actress" "Hubble")
+    ```
+  </Tab>
+  <Tab title="playing_now">
+    Marks a track as currently playing. No timestamp is included.
+
+    ```emacs-lisp
+    (listenbrainz-submit-playing-now "Actress" "Hubble")
+    ```
+  </Tab>
+  <Tab title="import">
+    For submitting historical listens via the low-level function. Timestamps must be handled manually.
+
+    ```emacs-lisp
+    (listenbrainz-submit-listen "import" "Actress" "Hubble" "Splazsh")
+    ```
+  </Tab>
+</Tabs>
+
+## Typical workflow
+
+<Steps>
+  <Step title="Set your API token">
+    ```emacs-lisp
+    (setq listenbrainz-api-token "your-token-here")
+    ```
+  </Step>
+  <Step title="Validate the token">
+    ```emacs-lisp
+    (listenbrainz-validate-token listenbrainz-api-token)
+    ```
+    Confirm the returned value is your ListenBrainz username.
+  </Step>
+  <Step title="Submit a listen">
+    ```emacs-lisp
+    (listenbrainz-submit-single-listen "Matthew Thomas" "Taema" "Architecture")
+    ```
+    Check the `*Messages*` buffer for the API status response.
+  </Step>
+</Steps>

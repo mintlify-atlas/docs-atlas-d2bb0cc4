@@ -1,0 +1,87 @@
+---
+title: 'musicbrainz.el Overview — Search, Lookup, and Browse'
+description: 'Explore how musicbrainz.el wraps the MusicBrainz REST API, covering search, lookup, browse, and cover art for 13 core entity types.'
+keywords: ['musicbrainz', 'emacs', 'music metadata', 'API', 'search', 'lookup', 'browse']
+---
+
+The `musicbrainz.el` library gives you a direct Emacs Lisp interface to the [MusicBrainz open music encyclopedia](https://musicbrainz.org/doc/About). From an `org-mode` buffer or an Emacs Lisp program you can search artists and recordings, resolve names to stable identifiers, fetch release metadata, and retrieve cover art — all through a consistent set of functions that mirror the structure of the MusicBrainz REST API.
+
+## Three query types
+
+MusicBrainz exposes every entity through three distinct request patterns. Understanding which to use is the key to getting useful results.
+
+<AccordionGroup>
+  <Accordion title="Search — no MBID required" icon="magnifying-glass">
+    Search accepts a free-text or Lucene-syntax query and returns ranked matches. It is the only query type that works without knowing an MBID in advance.
+
+    ```emacs-lisp
+    (musicbrainz-search "artist" "Autechre")
+    (musicbrainz-search-artist "Autechre")
+    ```
+
+    Results include a relevance score (`100` = exact match) and the MBID of each match, which you can feed into a lookup or browse request.
+  </Accordion>
+
+  <Accordion title="Lookup — by MBID" icon="fingerprint">
+    Lookup retrieves a single entity by its exact MBID. Optional `inc` subquery parameters pull in related data (recordings, releases, labels, etc.) in one round-trip.
+
+    ```emacs-lisp
+    (musicbrainz-lookup "artist" "410c9baf-5469-44f6-9852-826524b80c61")
+    (musicbrainz-lookup-artist "410c9baf-5469-44f6-9852-826524b80c61")
+    ```
+  </Accordion>
+
+  <Accordion title="Browse — linked entities by MBID" icon="diagram-project">
+    Browse returns all entities of one type that are directly linked to a known entity. For example, all release groups for a given artist MBID.
+
+    ```emacs-lisp
+    (musicbrainz-browse "release-group" "artist" "410c9baf-5469-44f6-9852-826524b80c61" "album|ep")
+    ```
+
+    Browse is not a search — you must already have an MBID. Results are ordered by the linked entity and capped at 25 per page.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  Only search works without an MBID. For lookup and browse you must first obtain an MBID, either by searching or from the MusicBrainz website.
+</Note>
+
+## Core entities
+
+MusicBrainz organises its data around 13 core entity types. Every entity is uniquely identified by an [MBID](/musicbrainz/mbid).
+
+| Entity | Description |
+|---|---|
+| `area` | Geographic regions: countries, cities, subdivisions |
+| `artist` | Musicians, bands, orchestras, and other credited artists |
+| `event` | Concerts, festivals, and live performances |
+| `genre` | Music genres and sub-genres |
+| `instrument` | Musical instruments |
+| `label` | Record labels and imprints |
+| `place` | Specific venues and studios |
+| `recording` | A particular audio performance, unique by content |
+| `release` | A physical or digital product (CD, LP, download) |
+| `release-group` | An album or single grouping one or more releases |
+| `series` | Ordered sequences of entities |
+| `work` | An abstract composition (distinct from any recording of it) |
+| `url` | External URLs linked to MusicBrainz entities |
+
+## What's in this section
+
+<CardGroup cols={2}>
+  <Card title="Searching" icon="magnifying-glass" href="/musicbrainz/searching">
+    Search by name using free-text or Lucene syntax. Find artist MBIDs, labels, recordings, releases, and more.
+  </Card>
+  <Card title="Lookup" icon="fingerprint" href="/musicbrainz/lookup">
+    Retrieve complete metadata for a single entity by MBID, with optional subquery parameters.
+  </Card>
+  <Card title="Browsing" icon="diagram-project" href="/musicbrainz/browsing">
+    List all entities directly linked to a known entity — for example, every album by an artist.
+  </Card>
+  <Card title="Cover art" icon="image" href="/musicbrainz/cover-art">
+    Fetch front and back cover images from the Cover Art Archive by release or release-group MBID.
+  </Card>
+  <Card title="MBIDs" icon="tag" href="/musicbrainz/mbid">
+    Understand MusicBrainz Identifiers, validate them, and resolve ambiguous artist names.
+  </Card>
+</CardGroup>

@@ -1,0 +1,94 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "metabrainz.el",
+  "projectDescription": "An Emacs Lisp package providing interfaces to MusicBrainz and ListenBrainz APIs for music metadata search, lookup, browsing, and listen tracking.",
+  "theme": "palm",
+  "primaryColor": "#040404",
+  "lightColor": "#ec743c",
+  "darkColor": "#f9ecd4",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "configuration"
+            ]
+          },
+          {
+            "group": "MusicBrainz",
+            "pages": [
+              "musicbrainz/overview",
+              "musicbrainz/searching",
+              "musicbrainz/lookup",
+              "musicbrainz/browsing",
+              "musicbrainz/cover-art",
+              "musicbrainz/mbid"
+            ]
+          },
+          {
+            "group": "ListenBrainz",
+            "pages": [
+              "listenbrainz/overview",
+              "listenbrainz/submitting-listens",
+              "listenbrainz/reading-listens",
+              "listenbrainz/statistics",
+              "listenbrainz/social"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/musicbrainz-api",
+              "reference/listenbrainz-api",
+              "reference/customization",
+              "reference/related-projects"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Search MusicBrainz for artists, recordings, releases, labels, and more using Lucene query syntax",
+    "Lookup entities by MusicBrainz Identifier (MBID) with subquery support",
+    "Browse linked MusicBrainz entities (e.g., all releases by an artist)",
+    "Retrieve cover art from the Cover Art Archive",
+    "Submit and track listens to ListenBrainz (single listen, playing now, import)",
+    "Read user listening history, statistics, and social follow data from ListenBrainz",
+    "Designed for interactive use in org-mode or programmatic use in Emacs workflows",
+    "Macro-based function generation for consistent API coverage"
+  ],
+  "publicApiSurface": [
+    "musicbrainz-search (type query &optional limit offset)",
+    "musicbrainz-lookup (entity mbid &optional inc)",
+    "musicbrainz-browse (entity link query &optional type)",
+    "musicbrainz-find (query &rest extras)",
+    "musicbrainz-search-artist (artist &optional limit)",
+    "musicbrainz-artist-to-mbid (artist)",
+    "musicbrainz-disambiguate-artist (artist &optional limit)",
+    "musicbrainz-search-recording (query &optional limit)",
+    "musicbrainz-search-release (query &optional limit)",
+    "musicbrainz-search-label (label &optional limit)",
+    "musicbrainz-lookup-artist (mbid)",
+    "musicbrainz-lookup-recording (mbid)",
+    "musicbrainz-lookup-release (mbid)",
+    "musicbrainz-lookup-release-group (mbid)",
+    "musicbrainz-coverart (mbid &optional release-group)",
+    "musicbrainz-mbid-p (mbid)",
+    "listenbrainz-submit-single-listen (artist track &optional release)",
+    "listenbrainz-submit-playing-now (artist track &optional release)",
+    "listenbrainz-listens (username &optional count)",
+    "listenbrainz-playing-now (username)",
+    "listenbrainz-validate-token (token)",
+    "listenbrainz-stats-artists (username &optional count range)",
+    "listenbrainz-stats-releases (username &optional count range)",
+    "listenbrainz-stats-recordings (username &optional count range)",
+    "listenbrainz-followers (username &optional output)",
+    "listenbrainz-following (username)"
+  ]
+}

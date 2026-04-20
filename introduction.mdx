@@ -1,0 +1,54 @@
+---
+title: "Introduction to metabrainz.el for Emacs Music APIs"
+description: "metabrainz.el gives Emacs users direct access to the MusicBrainz open music encyclopedia and the ListenBrainz listen-tracking service from within Emacs."
+keywords: ["emacs", "musicbrainz", "listenbrainz", "music metadata", "scrobbling", "elisp"]
+---
+
+metabrainz.el is a pair of Emacs Lisp packages — `musicbrainz.el` and `listenbrainz.el` — that connect Emacs to two complementary music services. You can use them interactively inside `org-mode` to explore and query music metadata, or integrate them programmatically into music players and custom workflows to submit and retrieve listening data.
+
+## MusicBrainz
+
+[MusicBrainz](https://musicbrainz.org) is a community-maintained open source encyclopedia of music information. Its REST-based web service API provides direct access to a vast database of artists, recordings, releases, labels, events, and more, with output available in both XML and JSON.
+
+`musicbrainz.el` exposes the three core API request types:
+
+- **Search** — query entities by name or attribute using full [Lucene search syntax](https://lucene.apache.org/core/7_7_2/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#package.description)
+- **Lookup** — retrieve detailed data for a specific entity using its MusicBrainz Identifier (MBID)
+- **Browse** — list all entities directly linked to a known entity by MBID
+
+The package also provides access to the [Cover Art Archive](https://coverartarchive.org), which stores front and back cover images for releases.
+
+## ListenBrainz
+
+[ListenBrainz](https://listenbrainz.org) is a project for recording the music you listen to. Your listening history can be used to generate statistics, power recommendations, and support exploration of your own tastes over time.
+
+`listenbrainz.el` covers the core parts of the ListenBrainz API:
+
+- **Submitting listens** — send single listens, playing-now events, or bulk imports
+- **Reading listens** — retrieve recent listens and playing-now status for any user
+- **Statistics** — fetch top artists, releases, and recordings over configurable time ranges
+- **Social** — look up follower and following relationships between users
+
+## Requirements
+
+Both packages require:
+
+- **Emacs 28.1 or later** (musicbrainz.el uses `length=`, introduced in 28.1)
+- **request.el 0.3 or later** — an HTTP library available from MELPA
+
+<Note>
+  The `listenbrainz.el` package header lists Emacs 27.1 as its minimum version, but using both packages together requires Emacs 28.1 due to `musicbrainz.el`.
+</Note>
+
+## Designed for interactive and programmatic use
+
+Both packages are designed to work well in two modes. In an `org-mode` buffer, you can evaluate expressions inline and view formatted results — artists, releases, recordings, and listening history — as org tables. In a programmatic context, the same functions return Emacs Lisp data structures that you can process in your own code or music player integrations.
+
+<CardGroup cols={2}>
+  <Card title="MusicBrainz" icon="magnifying-glass" href="/musicbrainz/overview">
+    Search and browse the open music encyclopedia, look up entities by MBID, and retrieve cover art
+  </Card>
+  <Card title="ListenBrainz" icon="music" href="/listenbrainz/overview">
+    Submit listening data, read listen history, and retrieve user statistics and social connections
+  </Card>
+</CardGroup>

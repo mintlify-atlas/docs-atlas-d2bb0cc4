@@ -1,0 +1,109 @@
+---
+title: "Configuring metabrainz.el API tokens and endpoints"
+description: "Set API tokens, customize endpoint URLs, and configure the user-agent header for rate-limit compliance in musicbrainz.el and listenbrainz.el."
+keywords: ["configuration", "api token", "listenbrainz token", "musicbrainz", "customize", "user-agent", "rate limiting"]
+---
+
+Both packages expose their settings as Emacs customization variables, organized into the `musicbrainz` and `listenbrainz` custom groups. You can set values directly in your init file, use `M-x customize-group`, or configure them through `use-package`.
+
+## MusicBrainz settings
+
+<ParamField path="musicbrainz-api-url" type="string" default="https://musicbrainz.org/ws/2">
+  The base URL for all MusicBrainz API requests. Change this only if you are running a local MusicBrainz mirror or a test server.
+</ParamField>
+
+<ParamField path="musicbrainz-coverart-api-url" type="string" default="http://coverartarchive.org">
+  The base URL for Cover Art Archive requests used by `musicbrainz-coverart` and related functions.
+</ParamField>
+
+<ParamField path="musicbrainz-api-token" type="string" default='""'>
+  An authentication token for MusicBrainz API requests that require a logged-in user, such as accessing private collections. Leave empty for unauthenticated requests.
+</ParamField>
+
+<ParamField path="musicbrainz-user-agent" type="string" default='"musicbrainz.el/0.1"'>
+  The `User-Agent` header sent with every MusicBrainz API request. MusicBrainz uses this to identify API clients and enforce rate limiting. The MusicBrainz API allows one request per second per client; a recognizable user-agent helps avoid blocks.
+</ParamField>
+
+<Warning>
+  Setting a meaningful `musicbrainz-user-agent` is important for compliance with the [MusicBrainz rate limiting policy](https://wiki.musicbrainz.org/MusicBrainz_API/Rate_Limiting). The default value `"musicbrainz.el/0.1"` is functional, but consider including contact information for production or high-volume use.
+</Warning>
+
+## ListenBrainz settings
+
+<ParamField path="listenbrainz-api-url" type="string" default="https://api.listenbrainz.org">
+  The base URL for all ListenBrainz API requests.
+</ParamField>
+
+<ParamField path="listenbrainz-api-token" type="string" default='""'>
+  Your ListenBrainz user token. Required for submitting listens (`listenbrainz-submit-listen`, `listenbrainz-submit-single-listen`, `listenbrainz-submit-playing-now`) and for any API calls that act on behalf of your account.
+</ParamField>
+
+### Finding your ListenBrainz token
+
+<Steps>
+  <Step title="Log in to ListenBrainz">
+    Go to [listenbrainz.org](https://listenbrainz.org) and sign in to your account.
+  </Step>
+  <Step title="Open your profile settings">
+    Navigate to [listenbrainz.org/profile/](https://listenbrainz.org/profile/). Your API token is displayed on this page.
+  </Step>
+  <Step title="Copy and set the token in Emacs">
+    Add the token to your init file or set it interactively:
+
+    ```emacs-lisp
+    (setq listenbrainz-api-token "your-token-here")
+    ```
+  </Step>
+  <Step title="Validate the token">
+    Confirm the token is accepted by ListenBrainz:
+
+    ```emacs-lisp
+    (listenbrainz-validate-token listenbrainz-api-token)
+    ;; => "your-username"  (returns nil if invalid)
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Read-only API calls — such as `listenbrainz-listens` and `listenbrainz-stats-artists` — do not require a token. The token is only needed for write operations and account-specific endpoints.
+</Note>
+
+## Using the customize interface
+
+Both packages register custom groups that you can browse and edit through the standard Emacs customization interface.
+
+```emacs-lisp
+;; Open the MusicBrainz customization group
+M-x customize-group RET musicbrainz RET
+
+;; Open the ListenBrainz customization group
+M-x customize-group RET listenbrainz RET
+```
+
+Changes saved through `customize` are written to your `custom-file` and persist across sessions.
+
+## use-package configuration example
+
+The following shows a complete configuration for both packages using `use-package` with `straight.el`:
+
+```emacs-lisp
+(use-package musicbrainz
+  :straight (musicbrainz :type git
+                         :host github
+                         :repo "zzkt/metabrainz"
+                         :files ("musicbrainz.el"))
+  :custom
+  (musicbrainz-user-agent "musicbrainz.el/0.1 ( your@email.example )"))
+
+(use-package listenbrainz
+  :straight (listenbrainz :type git
+                          :host github
+                          :repo "zzkt/metabrainz"
+                          :files ("listenbrainz.el"))
+  :custom
+  (listenbrainz-api-token "your-token-here"))
+```
+
+<Tip>
+  Keep your `listenbrainz-api-token` out of version-controlled init files. Consider loading it from a separate secrets file, from `auth-source`, or from an environment variable evaluated at startup.
+</Tip>

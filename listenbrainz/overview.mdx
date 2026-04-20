@@ -1,0 +1,75 @@
+---
+title: 'listenbrainz.el — Track Music Listening from Emacs'
+description: 'Explore what listenbrainz.el provides: submitting listens, reading history, user statistics, and social features via the ListenBrainz API.'
+keywords: ['listenbrainz', 'emacs', 'scrobbling', 'music listening', 'listenbrainz.el']
+---
+
+ListenBrainz is an open-source project that stores and analyzes music listening data. The `listenbrainz.el` package provides an Emacs Lisp interface for interacting with the ListenBrainz API — whether you want to submit listens from a music player, retrieve your listening history, explore statistics, or inspect social connections between users.
+
+## What listenbrainz.el provides
+
+The package covers four functional areas of the ListenBrainz API:
+
+- **Submitting listens** — record tracks as played or currently playing
+- **Reading listens** — retrieve a user's recent listening history and now-playing status
+- **Statistics** — fetch a user's top artists, releases, and recordings over time
+- **Social** — view follower and following relationships between users
+
+## Authentication
+
+Some API endpoints are public and require no credentials. Others — specifically those that submit data — require a ListenBrainz user token.
+
+<Info>
+  You can find your user token at [listenbrainz.org/profile/](https://listenbrainz.org/profile/) after logging in.
+</Info>
+
+**Requires a token (`listenbrainz-api-token`):**
+
+- `listenbrainz-submit-listen`
+- `listenbrainz-submit-single-listen`
+- `listenbrainz-submit-playing-now`
+
+**Public (no token needed):**
+
+- `listenbrainz-listens`
+- `listenbrainz-playing-now`
+- `listenbrainz-stats-artists` / `listenbrainz-stats-releases` / `listenbrainz-stats-recordings`
+- `listenbrainz-followers` / `listenbrainz-following`
+- `listenbrainz-validate-token`
+
+Set your token in your Emacs configuration:
+
+```emacs-lisp
+(setq listenbrainz-api-token "your-token-here")
+```
+
+Or use `M-x customize-variable RET listenbrainz-api-token` to set it through the Customize interface.
+
+## API constants
+
+These constants reflect the upstream ListenBrainz API limits and are defined in `listenbrainz.el`:
+
+| Constant | Value | Description |
+|---|---|---|
+| `listenbrainz--MAX_LISTEN_SIZE` | `10240` | Maximum overall listen payload size in bytes |
+| `listenbrainz--MAX_ITEMS_PER_GET` | `100` | Maximum items returned in a single GET request |
+| `listenbrainz--DEFAULT_ITEMS_PER_GET` | `25` | Default items returned when no count is specified |
+| `listenbrainz--MAX_TAGS_PER_LISTEN` | `50` | Maximum number of tags per listen |
+| `listenbrainz--MAX_TAG_SIZE` | `64` | Maximum character length of a single tag |
+
+## Explore the API
+
+<CardGroup cols={2}>
+  <Card title="Submitting listens" icon="circle-play" href="/listenbrainz/submitting-listens">
+    Submit single listens, import history, and mark tracks as currently playing.
+  </Card>
+  <Card title="Reading listens" icon="list-music" href="/listenbrainz/reading-listens">
+    Retrieve recent listening history and the now-playing track for any user.
+  </Card>
+  <Card title="Statistics" icon="chart-bar" href="/listenbrainz/statistics">
+    Query top artists, releases, and recordings over various time ranges.
+  </Card>
+  <Card title="Social" icon="users" href="/listenbrainz/social">
+    Explore follower and following relationships between ListenBrainz users.
+  </Card>
+</CardGroup>

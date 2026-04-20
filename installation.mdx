@@ -1,0 +1,119 @@
+---
+title: "Installing musicbrainz.el and listenbrainz.el in Emacs"
+description: "Install musicbrainz.el and listenbrainz.el via manual load-path, straight.el, or use-package. Requires Emacs 28.1+ and request.el from MELPA."
+keywords: ["install", "emacs", "straight.el", "use-package", "load-path", "musicbrainz", "listenbrainz"]
+---
+
+metabrainz.el is not yet available on MELPA or GNU ELPA, so installation requires cloning the repository directly or using a source-based package manager. Both `musicbrainz.el` and `listenbrainz.el` depend on the `request` package, which is available on MELPA.
+
+## Prerequisites
+
+Before installing, ensure you have:
+
+- **Emacs 28.1 or later**
+- **request.el 0.3 or later** — install from MELPA with `M-x package-install RET request RET`
+
+<Warning>
+  `musicbrainz.el` uses `length=`, which was introduced in Emacs 28.1. Earlier Emacs versions will fail to load the package.
+</Warning>
+
+## Installation methods
+
+<CodeGroup>
+
+```emacs-lisp Manual (load-path)
+;; 1. Clone the repository
+;;    git clone https://github.com/zzkt/metabrainz.git ~/path/to/metabrainz
+
+;; 2. Add to your init file:
+(add-to-list 'load-path "~/path/to/metabrainz")
+(require 'musicbrainz)
+(require 'listenbrainz)
+```
+
+```emacs-lisp straight.el
+(straight-use-package
+ '(musicbrainz :type git
+               :host github
+               :repo "zzkt/metabrainz"
+               :files ("musicbrainz.el")))
+
+(straight-use-package
+ '(listenbrainz :type git
+                :host github
+                :repo "zzkt/metabrainz"
+                :files ("listenbrainz.el")))
+```
+
+```emacs-lisp use-package with straight
+(use-package musicbrainz
+  :straight (musicbrainz :type git
+                         :host github
+                         :repo "zzkt/metabrainz"
+                         :files ("musicbrainz.el")))
+
+(use-package listenbrainz
+  :straight (listenbrainz :type git
+                          :host github
+                          :repo "zzkt/metabrainz"
+                          :files ("listenbrainz.el")))
+```
+
+</CodeGroup>
+
+## Step-by-step: manual installation
+
+<Steps>
+  <Step title="Install the request dependency">
+    Open Emacs and install `request` from MELPA. If you haven't configured MELPA yet, add it to your init file first.
+
+    ```emacs-lisp
+    ;; Add MELPA to your package archives if needed
+    (require 'package)
+    (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+    (package-initialize)
+
+    ;; Then install request
+    ;; M-x package-install RET request RET
+    ```
+  </Step>
+  <Step title="Clone the repository">
+    Clone metabrainz to a local directory of your choice.
+
+    ```bash
+    git clone https://github.com/zzkt/metabrainz.git ~/elisp/metabrainz
+    ```
+  </Step>
+  <Step title="Add to load-path and require">
+    Add the cloned directory to your Emacs `load-path` and load both packages in your init file.
+
+    ```emacs-lisp
+    (add-to-list 'load-path "~/elisp/metabrainz")
+    (require 'musicbrainz)
+    (require 'listenbrainz)
+    ```
+  </Step>
+  <Step title="Verify the installation">
+    Evaluate the following expression to confirm the packages loaded correctly. It should return a string containing a valid MBID.
+
+    ```emacs-lisp
+    (musicbrainz-artist-to-mbid "Autechre")
+    ;; => "410c9baf-5469-44f6-9852-826524b80c61"
+    ```
+
+    If you see a string like `"410c9baf-5469-44f6-9852-826524b80c61"` in the echo area or the `*scratch*` buffer, both the package and its HTTP dependency are working.
+  </Step>
+</Steps>
+
+<Tip>
+  You can also verify installation interactively by calling `M-x musicbrainz-search` and entering `artist` as the type and any artist name as the query. Results appear in the echo area.
+</Tip>
+
+## Package dependencies reference
+
+| Package | Version | Source |
+|---|---|---|
+| `emacs` | 28.1+ | Built-in |
+| `request` | 0.3+ | MELPA |
+
+Both `musicbrainz.el` and `listenbrainz.el` also use `json` and `pp`, which are bundled with Emacs and require no separate installation.

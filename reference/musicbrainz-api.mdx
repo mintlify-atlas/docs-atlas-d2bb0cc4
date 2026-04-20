@@ -1,0 +1,828 @@
+---
+title: "musicbrainz.el API Reference — Search, Lookup, Browse"
+description: "Complete reference for every public function in musicbrainz.el: search, lookup, browse, cover art retrieval, MBID validation, and entity predicate helpers."
+---
+
+The `musicbrainz.el` package exposes three primary modes of interaction—search, lookup, and browse—mirroring the structure of the upstream MusicBrainz REST API. All functions return parsed JSON as Emacs Lisp alists, which can be passed directly to `musicbrainz-format` or processed with `let-alist`. Interactive variants (marked `###autoload`) can also be invoked with `M-x`.
+
+---
+
+## Search functions
+
+Search requests query a Lucene-backed index and do not require an MBID. Results include a relevance score. The full [Lucene query syntax](https://lucene.apache.org/core/7_7_2/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#package.description) is supported.
+
+### `musicbrainz-search`
+
+The general-purpose search entry point. Accepts any valid search type from `musicbrainz-search-types`.
+
+```emacs-lisp
+(musicbrainz-search type query &optional limit offset)
+```
+
+<ParamField path="type" type="string" required>
+  Entity index to search. Must be one of the values in `musicbrainz-search-types`: `annotation`, `area`, `artist`, `cdstub`, `event`, `instrument`, `label`, `place`, `recording`, `release`, `release-group`, `series`, `tag`, `work`, `url`.
+</ParamField>
+
+<ParamField path="query" type="string" required>
+  Lucene search query string. Special characters should be escaped; see `musicbrainz-qeury-special-chars` for the list.
+</ParamField>
+
+<ParamField path="limit" type="number" default="1">
+  Number of results to return. Valid range is 1–100.
+</ParamField>
+
+<ParamField path="offset" type="number" default="0">
+  Result offset for pagination.
+</ParamField>
+
+```emacs-lisp
+;; Search for artists named "Autechre"
+(musicbrainz-search "artist" "Autechre")
+
+;; Return up to 10 releases matching "tri repetae"
+(musicbrainz-search "release" "tri repetae" 10)
+
+;; Page through results
+(musicbrainz-search "label" "Warp" 25 25)
+```
+
+---
+
+### `musicbrainz-find`
+
+A general entry point that applies heuristics to decide whether to search or look up. When `query` is a valid MBID it attempts a lookup; otherwise it falls back to a text search.
+
+```emacs-lisp
+(musicbrainz-find query &rest extras)
+```
+
+<ParamField path="query" type="string" required>
+  An MBID or free-text search string.
+</ParamField>
+
+<ParamField path="extras" type="string">
+  Additional search terms (variadic).
+</ParamField>
+
+<Note>
+  Heuristic routing is not yet fully implemented. For predictable behaviour prefer `musicbrainz-search` or `musicbrainz-lookup` directly.
+</Note>
+
+---
+
+### `musicbrainz-search-artist`
+
+Search for artists by name and return formatted org-mode table rows.
+
+```emacs-lisp
+(musicbrainz-search-artist artist &optional limit)
+```
+
+<ParamField path="artist" type="string" required>
+  Artist name to search for.
+</ParamField>
+
+<ParamField path="limit" type="number">
+  Maximum number of results. When omitted only the top result is returned without a score column.
+</ParamField>
+
+```emacs-lisp
+(musicbrainz-search-artist "Autechre")
+;; => ("Autechre | 410c9baf-5469-44f6-9852-826524b80c61 |\n")
+
+(musicbrainz-search-artist "Autechre" 5)
+;; => ("100 | Autechre | 410c9baf-5469-44f6-9852-826524b80c61 |\n" ...)
+```
+
+---
+
+### `musicbrainz-artist-to-mbid`
+
+Resolve an artist name to its MBID, returning only 100% confidence matches.
+
+```emacs-lisp
+(musicbrainz-artist-to-mbid artist)
+```
+
+<ParamField path="artist" type="string" required>
+  Artist name to resolve.
+</ParamField>
+
+```emacs-lisp
+(musicbrainz-artist-to-mbid "Autechre")
+;; => "410c9baf-5469-44f6-9852-826524b80c61"
+```
+
+<Tip>
+  When a name matches multiple artists at 100% (e.g. "Bad Seeds"), use `musicbrainz-disambiguate-artist` to inspect all candidates.
+</Tip>
+
+---
+
+### `musicbrainz-disambiguate-artist`
+
+Return a scored org-mode table of artist candidates with disambiguation strings and MBID links.
+
+```emacs-lisp
+(musicbrainz-disambiguate-artist artist &optional limit)
+```
+
+<ParamField path="artist" type="string" required>
+  Artist name to disambiguate.
+</ParamField>
+
+<ParamField path="limit" type="number" default="11">
+  Maximum candidates to return.
+</ParamField>
+
+```emacs-lisp
+(musicbrainz-disambiguate-artist "John Williams" 3)
+```
+
+---
+
+### `musicbrainz-search-label`
+
+Search for record labels, with full disambiguation and lifespan data when `limit` is provided.
+
+```emacs-lisp
+(musicbrainz-search-label label &optional limit)
+```
+
+<ParamField path="label" type="string" required>
+  Label name to search for.
+</ParamField>
+
+<ParamField path="limit" type="number">
+  Number of results. With a limit, results include score, disambiguation, and date range.
+</ParamField>
+
+```emacs-lisp
+(musicbrainz-search-label "Warp")
+;; => ("Warp | [[https://musicbrainz.org/label/46f0f4cd...][46f0f4cd...]] |\n")
+
+(musicbrainz-search-label "Music" 5)
+;; Returns table with scores, names, descriptions, and date ranges
+```
+
+---
+
+### Generated search functions
+
+The following functions are generated by `musicbrainz--defsearch-2` and share the same signature:
+
+```emacs-lisp
+(musicbrainz-search-ENTITY query &optional limit)
+```
+
+<AccordionGroup>
+  <Accordion title="musicbrainz-search-annotation">
+    Searches the `annotation` index. Returns columns: score, type, name, text, and an org-link to the annotated entity.
+
+    ```emacs-lisp
+    (musicbrainz-search-annotation "Autechre" 5)
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-search-area">
+    Searches the `area` index (countries, cities, regions). Returns name and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-search-area "Vienna")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-search-event">
+    Searches the `event` index (concerts, festivals). Returns name and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-search-event "Sonar")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-search-instrument">
+    Searches the `instrument` index. Returns name, type, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-search-instrument "theremin")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-search-place">
+    Searches the `place` index (venues, studios). Returns name and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-search-place "Berghain")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-search-recording">
+    Searches the `recording` index. Returns score, title, primary artist credit, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-search-recording "Gantz Graf" 5)
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-search-release">
+    Searches the `release` index. Returns score, title, artist credit, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-search-release "Amber" 5)
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-search-release-group">
+    Searches the `release-group` index. Returns first release date, title, primary type, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-search-release-group "Confield")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-search-series">
+    Searches the `series` index. Returns name and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-search-series "BBC Peel Sessions")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-search-work">
+    Searches the `work` index (compositions, songs). Returns score, title, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-search-work "Gnossienne")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-search-url">
+    Searches the `url` index. Returns score, resource URL, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-search-url "https://autechre.ws")
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Lookup functions
+
+Lookup requests require a valid MBID and return detailed data for a specific entity. Subquery variants (`musicbrainz-lookup-ENTITY-SUBQUERY`) include related entities in the response.
+
+### `musicbrainz-lookup`
+
+The general lookup entry point. Validates the entity type and MBID before making the request.
+
+```emacs-lisp
+(musicbrainz-lookup entity mbid &optional inc)
+```
+
+<ParamField path="entity" type="string" required>
+  A core entity type. Must be one of the values in `musicbrainz-entities-core`: `area`, `artist`, `event`, `genre`, `instrument`, `label`, `place`, `recording`, `release`, `release-group`, `series`, `work`, `url`.
+</ParamField>
+
+<ParamField path="mbid" type="string" required>
+  A 36-character MusicBrainz Identifier (UUID format). Validated by `musicbrainz-mbid-p`.
+</ParamField>
+
+<ParamField path="inc" type="string">
+  Subquery or relationship include parameter (e.g. `"recordings"`, `"artist-rels"`).
+</ParamField>
+
+```emacs-lisp
+;; Basic artist lookup
+(musicbrainz-lookup "artist" "410c9baf-5469-44f6-9852-826524b80c61")
+
+;; Lookup with subquery
+(musicbrainz-lookup "artist" "410c9baf-5469-44f6-9852-826524b80c61" "releases")
+```
+
+---
+
+### Artist lookup functions
+
+<AccordionGroup>
+  <Accordion title="musicbrainz-lookup-artist">
+    Returns a formatted row with name, disambiguation, type, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-artist "410c9baf-5469-44f6-9852-826524b80c61")
+    ;; | Autechre | electronic music duo | Group | [[https://musicbrainz.org/artist/410c9baf...][...]] |
+    ```
+
+    <ParamField path="mbid" type="string" required>
+      Artist MBID.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-artist-recordings">
+    Returns a list of recording titles with MBID links for the given artist.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-artist-recordings "410c9baf-5469-44f6-9852-826524b80c61")
+    ```
+
+    <ParamField path="mbid" type="string" required>
+      Artist MBID.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-artist-releases">
+    Returns releases with date, title, packaging, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-artist-releases "410c9baf-5469-44f6-9852-826524b80c61")
+    ```
+
+    <ParamField path="mbid" type="string" required>
+      Artist MBID.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-artist-release-groups">
+    Returns release groups with first release date, title, primary type, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-artist-release-groups "410c9baf-5469-44f6-9852-826524b80c61")
+    ```
+
+    <ParamField path="mbid" type="string" required>
+      Artist MBID.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-artist-works">
+    Returns works (compositions) with title and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-artist-works "410c9baf-5469-44f6-9852-826524b80c61")
+    ```
+
+    <ParamField path="mbid" type="string" required>
+      Artist MBID.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+### Recording lookup functions
+
+<AccordionGroup>
+  <Accordion title="musicbrainz-lookup-recording">
+    Returns first release date, title, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-recording "83730176-89ec-41a5-a4b6-476998f6291c")
+    ```
+
+    <ParamField path="mbid" type="string" required>
+      Recording MBID.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-recording-artists">
+    Returns artist credits for the recording with name and MBID links.
+
+    <ParamField path="mbid" type="string" required>
+      Recording MBID.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-recording-releases">
+    Returns releases that include the recording: date, title, packaging, MBID link.
+
+    <ParamField path="mbid" type="string" required>
+      Recording MBID.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-recording-isrcs">
+    Returns ISRC identifiers associated with the recording.
+
+    <ParamField path="mbid" type="string" required>
+      Recording MBID.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-recording-url-rels">
+    Returns URL relationships for the recording.
+
+    <ParamField path="mbid" type="string" required>
+      Recording MBID.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+### Release lookup functions
+
+<AccordionGroup>
+  <Accordion title="musicbrainz-lookup-release">
+    Returns date, title, packaging, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-release "ec1ecfcc-f529-43d1-8aa6-2c7051ede00c")
+    ;; | 1990 | Autechre / Saw You | Cassette Case | [[https://musicbrainz.org/release/ec1ecfcc...][...]] |
+    ```
+
+    <ParamField path="mbid" type="string" required>
+      Release MBID.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-release-artists">
+    Returns artist credits for the release.
+
+    <ParamField path="mbid" type="string" required>
+      Release MBID.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  `musicbrainz-lookup-release-collections`, `musicbrainz-lookup-release-labels`, `musicbrainz-lookup-release-recordings`, and `musicbrainz-lookup-release-release-groups` are defined in the source but not yet implemented.
+</Note>
+
+---
+
+### Release-group lookup functions
+
+<AccordionGroup>
+  <Accordion title="musicbrainz-lookup-release-group">
+    Returns first release date, title, primary type, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-release-group "fe4acfe9-6d1e-3565-8857-fb16ddc492ab")
+    ```
+
+    <ParamField path="mbid" type="string" required>
+      Release-group MBID.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-release-group-artists">
+    Returns artist credits for the release group.
+
+    <ParamField path="mbid" type="string" required>
+      Release-group MBID.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+### Other entity lookup functions
+
+<AccordionGroup>
+  <Accordion title="musicbrainz-lookup-area">
+    Returns area name and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-area "c9ac1239-e832-41bc-9930-e252a1fd1105")
+    ```
+
+    <ParamField path="mbid" type="string" required>Area MBID.</ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-collection">
+    Returns collection name and MBID link.
+
+    <ParamField path="mbid" type="string" required>Collection MBID.</ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-collection-user-collections">
+    Returns user collections. Requires authentication via `musicbrainz-api-token`.
+
+    <ParamField path="mbid" type="string" required>Collection MBID.</ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-event">
+    Returns event name and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-event "7c132556-e902-4481-b9cb-ec76a175628a")
+    ```
+
+    <ParamField path="mbid" type="string" required>Event MBID.</ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-genre">
+    Returns genre name and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-genre "68c81274-5770-4e7b-a4bf-ab0d7d425d99")
+    ```
+
+    <ParamField path="mbid" type="string" required>Genre MBID.</ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-instrument">
+    Returns instrument name, type, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-instrument "303d4f1a-f799-4c42-9bac-dbedd9139e91")
+    ```
+
+    <ParamField path="mbid" type="string" required>Instrument MBID.</ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-label">
+    Returns label name, disambiguation, and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-label "8943d408-940c-403b-a01d-9036c227d50f")
+    ```
+
+    <ParamField path="mbid" type="string" required>Label MBID.</ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-label-releases">
+    Returns releases on the label: date, title, and MBID link.
+
+    <ParamField path="mbid" type="string" required>Label MBID.</ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-place">
+    Returns place name and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-place "73cba8a4-cacb-45b9-8e02-654f716e2e7a")
+    ```
+
+    <ParamField path="mbid" type="string" required>Place MBID.</ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-series">
+    Returns series title and MBID link.
+
+    <ParamField path="mbid" type="string" required>Series MBID.</ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-work">
+    Returns work title and MBID link.
+
+    ```emacs-lisp
+    (musicbrainz-lookup-work "4ee2545d-2be5-3841-b568-0b4554eccc67")
+    ```
+
+    <ParamField path="mbid" type="string" required>Work MBID.</ParamField>
+  </Accordion>
+
+  <Accordion title="musicbrainz-lookup-url">
+    Returns URL name and MBID link.
+
+    <ParamField path="mbid" type="string" required>URL MBID.</ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Browse functions
+
+Browse requests return all entities directly linked to another entity. Unlike search, they require an MBID and do not rank results by relevance.
+
+### `musicbrainz-browse`
+
+```emacs-lisp
+(musicbrainz-browse entity link query &optional type)
+```
+
+<ParamField path="entity" type="string" required>
+  The result entity type to retrieve (e.g. `"release-group"`).
+</ParamField>
+
+<ParamField path="link" type="string" required>
+  The linking entity type (e.g. `"artist"`).
+</ParamField>
+
+<ParamField path="query" type="string" required>
+  The MBID of the linking entity.
+</ParamField>
+
+<ParamField path="type" type="string">
+  Optional type filter applied to the result entity (e.g. `"album|ep"`).
+</ParamField>
+
+```emacs-lisp
+;; Browse Autechre's albums and EPs
+(musicbrainz-browse "release-group"
+                    "artist"
+                    "410c9baf-5469-44f6-9852-826524b80c61"
+                    "album|ep")
+
+;; Browse all releases on Warp Records
+(musicbrainz-browse "release" "label" "46f0f4cd-8aab-4b33-b698-f459faf64190")
+```
+
+<Note>
+  Browse results are ordered consistently by the linked entity, but not sorted by any field. Fetch all results and sort in Emacs if ordering matters.
+</Note>
+
+---
+
+### `musicbrainz-relations`
+
+A convenience wrapper around `musicbrainz-lookup` for fetching a specific relationship type.
+
+```emacs-lisp
+(musicbrainz-relations entity relation mbid)
+```
+
+<ParamField path="entity" type="string" required>
+  Core entity type to look up.
+</ParamField>
+
+<ParamField path="relation" type="string" required>
+  Relationship type prefix. The suffix `-rels` is appended automatically. Valid base types include those in `musicbrainz-relationships`: `area`, `artist`, `event`, `instrument`, `label`, `place`, `recording`, `release`, `release-group`, `series`, `url`, `work`.
+</ParamField>
+
+<ParamField path="mbid" type="string" required>
+  MBID of the entity.
+</ParamField>
+
+```emacs-lisp
+(musicbrainz-relations "artist" "url" "410c9baf-5469-44f6-9852-826524b80c61")
+```
+
+---
+
+## Cover Art functions
+
+Cover art is served by the [Cover Art Archive](https://coverartarchive.org/) at a separate URL configured by `musicbrainz-coverart-api-url`.
+
+### `musicbrainz-coverart`
+
+```emacs-lisp
+(musicbrainz-coverart mbid &optional release-group)
+```
+
+<ParamField path="mbid" type="string" required>
+  MBID of the release (or release group when `release-group` is non-nil).
+</ParamField>
+
+<ParamField path="release-group" type="boolean">
+  When non-nil, treat `mbid` as a release-group MBID instead of a release MBID.
+</ParamField>
+
+```emacs-lisp
+;; Cover art for a release
+(musicbrainz-coverart "a929130a-535c-4827-8663-f048e1a7ca0d")
+
+;; Cover art for a release group
+(musicbrainz-coverart "fe4acfe9-6d1e-3565-8857-fb16ddc492ab" t)
+```
+
+---
+
+### `musicbrainz-coverart-file-front`
+
+Fetch the front cover image binary for a release.
+
+```emacs-lisp
+(musicbrainz-coverart-file-front mbid)
+```
+
+<ParamField path="mbid" type="string" required>
+  Release MBID.
+</ParamField>
+
+---
+
+### `musicbrainz-coverart-file-back`
+
+Fetch the back cover image binary for a release.
+
+```emacs-lisp
+(musicbrainz-coverart-file-back mbid)
+```
+
+<ParamField path="mbid" type="string" required>
+  Release MBID.
+</ParamField>
+
+---
+
+## Utility functions
+
+### `musicbrainz-mbid-p`
+
+Check whether a string is a well-formed MBID (permissive UUID validation).
+
+```emacs-lisp
+(musicbrainz-mbid-p mbid)
+```
+
+<ParamField path="mbid" type="string" required>
+  The string to validate. Must be 36 characters in `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` format using only hexadecimal digits.
+</ParamField>
+
+```emacs-lisp
+(musicbrainz-mbid-p "410c9baf-5469-44f6-9852-826524b80c61") ;; => t
+(musicbrainz-mbid-p "not-an-mbid")                          ;; => nil
+```
+
+---
+
+### `musicbrainz-format`
+
+Pretty-print any API response alist to a string using `pp`.
+
+```emacs-lisp
+(musicbrainz-format response)
+```
+
+<ParamField path="response" type="list" required>
+  An alist returned by any search, lookup, or browse function.
+</ParamField>
+
+```emacs-lisp
+(musicbrainz-format
+ (musicbrainz-browse "release-group" "artist"
+                     "410c9baf-5469-44f6-9852-826524b80c61" "album|ep"))
+```
+
+---
+
+### Entity predicate functions
+
+| Function | Description |
+|---|---|
+| `(musicbrainz-core-entity-p entity)` | Returns `t` if `entity` is in `musicbrainz-entities-core`. |
+| `(musicbrainz-non-core-entity-p entity)` | Returns `t` if `entity` is in `musicbrainz-entities-non-core`. |
+| `(musicbrainz-uid-entity-p entity)` | Returns `t` if `entity` is a UID type (`discid`, `isrc`, `iswc`). |
+| `(musicbrainz-search-type-p type)` | Returns `t` if `type` is a valid search type. |
+| `(musicbrainz-linked-entity-p entity)` | Returns `t` if `entity` can be used in a browse request. |
+
+---
+
+## Constants
+
+<AccordionGroup>
+  <Accordion title="musicbrainz-entities-core">
+    Core entity types that support lookup, browse, and search:
+
+    ```emacs-lisp
+    ("area" "artist" "event" "genre" "instrument" "label" "place"
+     "recording" "release" "release-group" "series" "work" "url")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-entities-non-core">
+    Non-core entity types:
+
+    ```emacs-lisp
+    ("rating" "tag" "collection")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-entities-uids">
+    Unique-identifier entity types:
+
+    ```emacs-lisp
+    ("discid" "isrc" "iswc")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-entities-linked">
+    Entities that can serve as the link target in a browse request:
+
+    ```emacs-lisp
+    ("area" "artist" "collection" "event" "instrument" "label" "place"
+     "recording" "release" "release-group" "series" "work" "url")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-search-types">
+    Valid `type` values for `musicbrainz-search`:
+
+    ```emacs-lisp
+    ("annotation" "area" "artist" "cdstub" "event" "instrument"
+     "label" "place" "recording" "release" "release-group"
+     "series" "tag" "work" "url")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-relationships">
+    Valid relationship prefixes for `musicbrainz-relations` and the `inc` parameter:
+
+    ```emacs-lisp
+    ("area-rels" "artist-rels" "event-rels" "instrument-rels"
+     "label-rels" "place-rels" "recording-rels" "release-rels"
+     "release-group-rels" "series-rels" "url-rels" "work-rels")
+    ```
+  </Accordion>
+
+  <Accordion title="musicbrainz-qeury-special-chars">
+    Characters that must be escaped in Lucene queries:
+
+    ```emacs-lisp
+    ("+" "-" "&" "|" "!" "(" ")" "{" "}" "[" "]" "^" "\"" "~" "*" "?" ":" "\\" "/")
+    ```
+
+    Note: the variable name contains a typo (`qeury`) preserved from the source.
+  </Accordion>
+</AccordionGroup>

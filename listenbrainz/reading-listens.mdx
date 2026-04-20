@@ -1,0 +1,97 @@
+---
+title: 'Read Listen History and Now-Playing from ListenBrainz'
+description: 'Fetch recent listening history and now-playing status for any ListenBrainz user with listenbrainz-listens and listenbrainz-playing-now.'
+keywords: ['listenbrainz', 'listens', 'playing now', 'listen history', 'emacs', 'listenbrainz-listens']
+---
+
+The reading functions let you retrieve listening data for any ListenBrainz user — no authentication token is required. Results are printed in an org-mode compatible pipe-table format, making them easy to work with in org buffers or inspect in the `*Messages*` buffer.
+
+## Getting recent listens
+
+Use `listenbrainz-listens` to retrieve a user's most recent listens. Each row in the output contains the artist name and track name.
+
+```emacs-lisp
+;; Get the default 25 most recent listens
+(listenbrainz-listens "zzzkt")
+
+;; Get a specific number of listens (up to 100)
+(listenbrainz-listens "zzzkt" 33)
+```
+
+<ParamField path="query.username" type="string" required>
+  The ListenBrainz username whose listens to retrieve.
+</ParamField>
+
+<ParamField path="query.count" type="number" default="25">
+  Number of listens to fetch. Defaults to `25`. Maximum is `100` per request (see `listenbrainz--MAX_ITEMS_PER_GET`).
+</ParamField>
+
+### Output format
+
+The function prints output using an org-mode style pipe-table format. Each row contains:
+
+```
+artist_name | track_name |
+```
+
+For example:
+
+```
+Autechre | Eutow |
+Actress | Hubble |
+farmersmanual | 808808008088 (11) |
+```
+
+<Tip>
+  Calling these functions from within an org-mode source block captures the output directly into your org document.
+</Tip>
+
+## Getting the now-playing track
+
+Use `listenbrainz-playing-now` to retrieve what a user is currently listening to, if anything.
+
+```emacs-lisp
+(listenbrainz-playing-now "zzzkt")
+```
+
+<ParamField path="query.username" type="string" required>
+  The ListenBrainz username to check.
+</ParamField>
+
+### Output format
+
+Like `listenbrainz-listens`, the now-playing output uses the same pipe-table format:
+
+```
+artist_name | track_name |
+```
+
+If the user is not currently playing anything, the output will be empty.
+
+<Note>
+  The now-playing endpoint reflects the most recently submitted `playing_now` listen. It may be empty if no track has been submitted recently or if the previous `playing_now` has expired.
+</Note>
+
+## Examples from the README
+
+These examples are taken directly from the project README and illustrate typical interactive use:
+
+```emacs-lisp
+;; Fetch recent listens for user "zzzkt"
+(listenbrainz-listens "zzzkt")
+
+;; Fetch exactly 33 listens
+(listenbrainz-listens "zzzkt" 33)
+
+;; Check what "zzzkt" is playing right now
+(listenbrainz-playing-now "zzzkt")
+```
+
+## API limits
+
+| Limit | Value |
+|---|---|
+| Default items per GET | 25 (`listenbrainz--DEFAULT_ITEMS_PER_GET`) |
+| Maximum items per GET | 100 (`listenbrainz--MAX_ITEMS_PER_GET`) |
+
+To retrieve more than 100 listens, you would need to make multiple requests with appropriate pagination — this is not currently handled automatically by the package.

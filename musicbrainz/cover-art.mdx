@@ -1,0 +1,125 @@
+---
+title: 'Fetch Cover Art from the Cover Art Archive by MBID'
+description: 'Retrieve front and back cover images from the Cover Art Archive by release or release-group MBID using the musicbrainz-coverart functions.'
+keywords: ['cover art', 'Cover Art Archive', 'release cover', 'musicbrainz coverart', 'front cover', 'back cover']
+---
+
+The [Cover Art Archive](https://coverartarchive.org/) is a joint project by MusicBrainz and the Internet Archive that stores cover images for releases. `musicbrainz.el` provides three functions to query it, all using the same MBID system as the rest of the library.
+
+<Info>
+  Cover art is stored per-release and per-release-group. The MBID you pass must match the entity type you are querying — a release MBID for `/release/`, a release-group MBID for `/release-group/`.
+</Info>
+
+## API endpoints
+
+The Cover Art Archive API exposes the following paths, all under `http://coverartarchive.org`:
+
+| Endpoint | Description |
+|---|---|
+| `/release/{mbid}/` | JSON index of all cover art images for a release |
+| `/release/{mbid}/front` | Redirect to the front cover image file |
+| `/release/{mbid}/back` | Redirect to the back cover image file |
+| `/release/{mbid}/{id}` | A specific image by its CAA image ID |
+| `/release/{mbid}/(id\|front\|back)-(250\|500\|1200)` | Thumbnail at a specific size |
+| `/release-group/{mbid}/` | JSON index of cover art for a release group |
+| `/release-group/{mbid}/front` | Front cover for the release group |
+| `/release-group/{mbid}/front-(250\|500\|1200)` | Thumbnail at a specific size |
+
+The base URL is configurable via `musicbrainz-coverart-api-url` (defaults to `http://coverartarchive.org`).
+
+## `musicbrainz-coverart`
+
+Returns the JSON index of all cover art images for a release or release group. The response is an alist containing image URLs, image IDs, types (front/back), and edit information.
+
+```emacs-lisp
+(musicbrainz-coverart mbid &optional release-group)
+```
+
+<ParamField path="query.mbid" type="string" required>
+  The MBID of the release (or release group when `release-group` is non-nil).
+</ParamField>
+
+<ParamField path="query.release-group" type="boolean" default="nil">
+  When non-nil, the MBID is treated as a release-group MBID and the query is sent to `/release-group/{mbid}/` instead of `/release/{mbid}/`.
+</ParamField>
+
+```emacs-lisp
+;; Cover art index for a release
+(musicbrainz-coverart "a929130a-535c-4827-8663-f048e1a7ca0d")
+
+;; Cover art index for a release group
+(musicbrainz-coverart "fe4acfe9-6d1e-3565-8857-fb16ddc492ab" t)
+```
+
+## `musicbrainz-coverart-file-front`
+
+Retrieves the front cover image file data for a release. The request follows the redirect from `/release/{mbid}/front` to the actual image file at the Internet Archive.
+
+```emacs-lisp
+(musicbrainz-coverart-file-front mbid)
+```
+
+```emacs-lisp
+(musicbrainz-coverart-file-front "a929130a-535c-4827-8663-f048e1a7ca0d")
+```
+
+## `musicbrainz-coverart-file-back`
+
+Retrieves the back cover image file data for a release.
+
+```emacs-lisp
+(musicbrainz-coverart-file-back mbid)
+```
+
+```emacs-lisp
+(musicbrainz-coverart-file-back "a929130a-535c-4827-8663-f048e1a7ca0d")
+```
+
+<Warning>
+  Not all releases have back cover images in the archive. A missing back cover returns an HTTP 404. Check the index response from `musicbrainz-coverart` first to confirm which image types are available.
+</Warning>
+
+## Example: Head Cleaning Cassette
+
+This example from the README shows how to combine a release lookup with a cover art request.
+
+```emacs-lisp
+;; First, confirm what release the MBID belongs to
+(musicbrainz-lookup-release "a929130a-535c-4827-8663-f048e1a7ca0d")
+;; => "| Head Cleaning Cassette | Cassette Case | a929130a-... |"
+
+;; Then fetch all cover art for that release
+(musicbrainz-coverart "a929130a-535c-4827-8663-f048e1a7ca0d")
+
+;; Or retrieve just the front cover file
+(musicbrainz-coverart-file-front "a929130a-535c-4827-8663-f048e1a7ca0d")
+```
+
+## A cover art workflow
+
+<Steps>
+  <Step title="Find the release MBID">
+    Search for the release by title, or look it up from an artist's release list.
+
+    ```emacs-lisp
+    (musicbrainz-search-release "tri repetae" 3)
+    ```
+  </Step>
+
+  <Step title="Check available images">
+    Request the cover art index to see which image types are present.
+
+    ```emacs-lisp
+    (musicbrainz-coverart "your-release-mbid-here")
+    ```
+  </Step>
+
+  <Step title="Retrieve the image you need">
+    Fetch the front or back cover file.
+
+    ```emacs-lisp
+    (musicbrainz-coverart-file-front "your-release-mbid-here")
+    (musicbrainz-coverart-file-back  "your-release-mbid-here")
+    ```
+  </Step>
+</Steps>

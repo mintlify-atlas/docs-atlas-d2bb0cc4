@@ -1,0 +1,143 @@
+---
+title: "MetaBrainz Ecosystem and metabrainz.el Dependencies"
+description: "An overview of the MetaBrainz ecosystem—MusicBrainz, ListenBrainz, Cover Art Archive, and more—plus the request.el HTTP library that powers the package."
+---
+
+The `metabrainz` package sits at the intersection of several interconnected open-source projects maintained by the [MetaBrainz Foundation](https://metabrainz.org/). Understanding the broader ecosystem helps clarify what each service provides and how the Emacs package interacts with it. The projects below are either direct dependencies, related databases in the Brainz family, or useful companion tools.
+
+---
+
+## Core services
+
+<CardGroup cols={2}>
+  <Card
+    title="MusicBrainz"
+    icon="database"
+    href="https://musicbrainz.org"
+  >
+    The open music encyclopedia that `musicbrainz.el` interfaces with. Provides structured metadata for artists, releases, recordings, labels, works, and more — all identified by permanent MBIDs.
+  </Card>
+
+  <Card
+    title="ListenBrainz"
+    icon="music"
+    href="https://listenbrainz.org"
+  >
+    A free, open-source listen tracking service. `listenbrainz.el` submits listens to and reads statistics from this service. Listens are used to generate recommendations and statistics.
+  </Card>
+
+  <Card
+    title="Cover Art Archive"
+    icon="image"
+    href="https://coverartarchive.org"
+  >
+    A joint project between MusicBrainz and the Internet Archive that hosts album artwork. The `musicbrainz-coverart` family of functions queries this service at `coverartarchive.org`.
+  </Card>
+
+  <Card
+    title="CritiqueBrainz"
+    icon="pen"
+    href="https://critiquebrainz.org"
+  >
+    A community site for writing and reading music reviews, linked to MusicBrainz entities. Not currently interfaced by this package.
+  </Card>
+</CardGroup>
+
+---
+
+## Extended Brainz ecosystem
+
+<CardGroup cols={2}>
+  <Card
+    title="BookBrainz"
+    icon="book"
+    href="https://bookbrainz.org"
+  >
+    An open encyclopedia of books, authors, and publishers — the literary counterpart to MusicBrainz. Has its own REST API at `api.bookbrainz.org`.
+  </Card>
+
+  <Card
+    title="MessyBrainz"
+    icon="shuffle"
+    href="https://listenbrainz.org/messybrainz/"
+  >
+    A service that links messy, unstructured music metadata (as submitted by listeners) to canonical MusicBrainz IDs. Used internally by ListenBrainz to clean up submitted listen data.
+  </Card>
+
+  <Card
+    title="ListenBrainz Labs"
+    icon="flask-conical"
+    href="https://labs.api.listenbrainz.org"
+  >
+    An experimental API surface for data-science and machine-learning features built on top of ListenBrainz listen data, such as similarity and tag generation.
+  </Card>
+
+  <Card
+    title="Troi"
+    icon="list-music"
+    href="https://troi.readthedocs.io"
+  >
+    A playlist generation library that uses ListenBrainz data and MusicBrainz metadata to build personalised playlists. Can be used alongside this package to turn listen statistics into playable queues.
+  </Card>
+</CardGroup>
+
+---
+
+## Dependency
+
+### request.el
+
+Both `musicbrainz.el` and `listenbrainz.el` depend on `request.el` for all HTTP communication. It is declared in the package headers:
+
+```emacs-lisp
+;; Package-Requires: ((emacs "28.1") (request "0.3"))  ; musicbrainz.el
+;; Package-Requires: ((emacs "27.1") (request "0.3"))  ; listenbrainz.el
+```
+
+`request.el` provides a synchronous (`:sync t`) HTTP client that blocks Emacs until the response arrives. All functions in this package use the synchronous mode so that return values can be used directly in expressions rather than via callbacks.
+
+Install via MELPA:
+
+```emacs-lisp
+(package-install 'request)
+```
+
+Or with `use-package`:
+
+```emacs-lisp
+(use-package request
+  :ensure t)
+```
+
+---
+
+## Query syntax
+
+Search functions in `musicbrainz.el` pass queries directly to MusicBrainz's Lucene-backed search index. The full [Lucene query parser syntax](https://lucene.apache.org/core/7_7_2/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#package.description) is supported, including field-specific searches, boolean operators, wildcards, and fuzzy matching.
+
+```emacs-lisp
+;; Field-specific search
+(musicbrainz-search "recording" "artist:Autechre AND title:Gantz")
+
+;; Wildcard
+(musicbrainz-search "artist" "Aphex*")
+
+;; Fuzzy match
+(musicbrainz-search "artist" "Autchere~")
+```
+
+<Tip>
+  Characters such as `+`, `-`, `&`, `|`, `!`, `(`, `)`, `{`, `}`, `[`, `]`, `^`, `"`, `~`, `*`, `?`, `:`, `\`, and `/` are special in Lucene queries and must be escaped with a backslash when used literally. The full list is in `musicbrainz-qeury-special-chars`.
+</Tip>
+
+---
+
+## Further reading
+
+- [MusicBrainz API documentation](https://musicbrainz.org/doc/MusicBrainz_API) — reference for search, lookup, and browse endpoints
+- [ListenBrainz API documentation](https://listenbrainz.readthedocs.io/en/production/dev/api/) — reference for all ListenBrainz endpoints
+- [Cover Art Archive API](https://musicbrainz.org/doc/Cover_Art_Archive/API) — cover art endpoint reference
+- [MusicBrainz rate limiting](https://wiki.musicbrainz.org/MusicBrainz_API/Rate_Limiting) — guidelines for well-behaved API clients
+- [MusicBrainz Identifier (MBID)](https://musicbrainz.org/doc/MusicBrainz_Identifier) — explanation of the UUID-based identifier system
+- [ListenBrainz JSON format](https://listenbrainz.readthedocs.io/en/production/dev/json/) — structure of listen submission payloads
+- [Troi bot playlists](https://listenbrainz.org/user/troi-bot/playlists/) — example playlists generated by the Troi library
